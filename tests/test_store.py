@@ -108,6 +108,14 @@ class StoreTests(unittest.TestCase):
         entry = next(i for i in self.store.state()['items'] if i['id']==phrase['id'])
         self.assertEqual(entry['coverage'], 0)
 
+    def test_dictionary_search_keeps_other_senses_available(self):
+        with self.store.db() as db:
+            first=db.execute("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES ('行','行','háng','hang','[\"line\"]')").lastrowid
+            second=db.execute("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES ('行','行','xíng','xing','[\"to go\"]')").lastrowid
+        self.store.add({'source':'dictionary','id':first})
+        results=self.store.search('行')
+        self.assertTrue(any(r['id']==second and r['source']=='dictionary' for r in results))
+
     def test_related_dictionary_candidates_when_topic_exhausted(self):
         with self.store.db() as db:
             for item in list(self.store._items(db).values()):

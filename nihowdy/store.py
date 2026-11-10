@@ -471,12 +471,15 @@ class Store:
             pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             rows = db.execute("SELECT * FROM dictionary WHERE traditional=? OR simplified=? OR plain=? OR meanings LIKE ? ESCAPE '\\' ORDER BY length(traditional),id LIMIT 30",
                               (query, query, plain_pinyin(query), "%"+pattern+"%"))
-            existing = {i["text"] for i in known}
+            catalog_matches = tuple(known)
             for r in rows:
-                if r["traditional"] not in existing:
+                meanings = [meaning for meaning in json.loads(r["meanings"]) if not any(
+                    item["text"] == r["traditional"] and item["pinyin"] == r["pinyin"] and
+                    correct_answer(meaning, item["answers"]) for item in catalog_matches)]
+                if meanings:
                     known.append({"id": r["id"], "source": "dictionary", "text": r["traditional"],
-                                  "pinyin": r["pinyin"], "english": json.loads(r["meanings"])[0],
-                                  "meanings": json.loads(r["meanings"]), "kind": "word"})
+                                  "pinyin": r["pinyin"], "english": meanings[0],
+                                  "meanings": meanings, "kind": "word"})
             return known[:35]
 
     def ime(self, query):
