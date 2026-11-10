@@ -1,0 +1,9 @@
+# Bundled language data
+
+- `cedict.txt.gz`: CC-CEDICT downloaded 2026-11-10 from the [MDBG export](https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz). Original dataset, unchanged. License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Copyright and contributors are recorded in the archive header. This is a dictionary, not a guarantee of Taiwan-specific readings.
+- `hanzi.json.gz`: merged dictionary and graphics records from [Make Me a Hanzi](https://github.com/skishore/makemeahanzi), downloaded 2026-11-10. Rebuild with `scripts/prepare_data.py`. Original fields preserved; serialization and packaging changed. Dictionary portions are LGPL v3 or later; geometry is under the Arphic Public License. License texts are in `licenses/`. Dataset stroke order follows PRC conventions; the app neither teaches nor grades that order. Taiwan glyph variants may differ.
+- `starter.json`: cached, source-grounded explanations and a small curated Taiwan Mandarin catalog. Character notes quote or summarize Make Me a Hanzi data; retain its attribution and applicable license when reusing those fields. Compound explanations are generated editorial content, not independently verified historical research. Historical assertions should be checked against the cited references.
+
+Optional speech: [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS), Apache-2.0, downloaded into ignored `.data/models/` by setup. AI-generated Taiwan Mandarin voice. The app supplies stored pinyin readings to avoid silently choosing a different regional reading. Runtime: ONNX Runtime (MIT); pinyin conversion: pypinyin (MIT). Full model and runtime credits remain with their authors.
+
+Local data and indexes are not sent to outside services during practice. Optional content-generation requests contain only the requested entry and its source material.
