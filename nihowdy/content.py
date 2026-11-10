@@ -45,6 +45,9 @@ def dictionary_rows():
             if not match:
                 continue
             traditional, simplified, reading, definitions = match.groups()
+            taiwan = re.search(r"Taiwan pr\. \[([^]]+)\]", definitions)
+            if taiwan:
+                reading = taiwan.group(1)
             # References and classifiers are not English answers.
             meanings = [d for d in definitions.split("/") if not
                         re.match(r"(CL:|variant of|old variant|see |surname |Taiwan pr\.)", d)]
@@ -95,3 +98,19 @@ def component_groups(char, hanzi):
 
 def starter_items():
     return json.loads((DATA / "starter.json").read_text())
+
+
+def infer_topic(meanings):
+    """Conservative local semantic tags; unrelated words stay in custom."""
+    text = " ".join(meanings).lower()
+    groups = {
+        "clothing": ["clothes", "clothing", "shirt", "sweater", "sock", "jacket", "trousers", "pants", "shoe", "garment"],
+        "technology": ["computer", "keyboard", "software", "telephone", "mobile phone", "internet", "electric", "network", "printer"],
+        "food": ["food", "drink", "coffee", "tea", "milk", "rice", "bread", "fruit", "apple", "egg", "vegetable", "meat"],
+        "travel": ["train", "bus", "metro", "station", "ticket", "airport", "flight", "transport", "vehicle"],
+        "people": ["family", "friend", "student", "teacher", "school", "learn", "study", "book"],
+    }
+    scores = {topic:sum(bool(re.search(r"\b"+re.escape(word)+r"s?\b", text)) for word in words)
+              for topic, words in groups.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] else "custom"

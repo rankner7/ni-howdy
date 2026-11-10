@@ -91,13 +91,27 @@ def resample(strokes, spacing=12):
     return points
 
 
-def shape_score(drawn, reference):
+def shape_score(drawn, reference, normalize=False):
     """Order/direction-independent geometry match in a 1024-unit drawing box.
 
     Symmetric coverage penalizes omissions AND extra ink. Per-reference-stroke
     coverage prevents a nearly complete glyph from passing with one stroke absent.
     This is an embedded template matcher, not a learned OCR model.
     """
+    if normalize:
+        ink_points = [p for s in drawn for p in s]
+        target_points = [p for s in reference for p in s]
+        if ink_points and target_points:
+            def bounds(points):
+                xs, ys = zip(*points)
+                return min(xs), min(ys), max(xs), max(ys)
+            x1,y1,x2,y2 = bounds(ink_points)
+            u1,v1,u2,v2 = bounds(target_points)
+            size = max(x2-x1,y2-y1)
+            if size > 20:
+                scale = max(u2-u1,v2-v1)/size
+                cx,cy,tx,ty=(x1+x2)/2,(y1+y2)/2,(u1+u2)/2,(v1+v2)/2
+                drawn = [[[(x-cx)*scale+tx,(y-cy)*scale+ty] for x,y in s] for s in drawn]
     ink = resample(drawn)
     target = resample(reference)
     if len(ink) < 3 or not target:

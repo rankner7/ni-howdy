@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .content import (component_groups, construction, dictionary_rows, load_hanzi,
+from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
 from .learning import (LEVELS, correct_answer, phrase_coverage, review_trials,
                        shape_score, transition, weight, weighted_choice)
@@ -85,9 +85,12 @@ class Store:
 
     def import_dictionary(self):
         with self.db() as db:
-            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone():
+            version = db.execute("SELECT value FROM settings WHERE key='dictionary_version'").fetchone()
+            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone() or not version:
+                db.execute("DELETE FROM dictionary")
                 db.executemany("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES (?,?,?,?,?)",
                                dictionary_rows())
+                db.execute("INSERT OR REPLACE INTO settings VALUES ('dictionary_version','2')")
 
     def _settings(self, db):
         return {r["key"]: json.loads(r["value"]) for r in db.execute("SELECT * FROM settings")}
@@ -115,6 +118,29 @@ class Store:
                 continue
             db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level,eligible_after) VALUES (?,?,?,?)",
                        (item_id, mode, self.lowest(item, mode), after))
+        if item["kind"] == "word":
+            self._generate_template(db, item, after)
+
+    def _generate_template(self, db, item, after):
+        """Cache a productive sentence template for suitable concrete nouns."""
+        if item["topic"] not in ("food", "clothing", "technology") or item["text"] in ("喝", "吃", "電", "腦", "手", "網路"):
+            return
+        meaning = item["english"]
+        if len(meaning) > 40 or meaning.startswith("to ") or "(" in meaning or ";" in meaning:
+            return
+        noun = next((a for a in item["answers"] if a.startswith(("a ", "an "))), meaning)
+        tokens = ["我", "也", "要", "買", item["id"]]
+        text = "我也要買" + item["text"] + "。"
+        pinyin = "wǒ yě yào mǎi " + item["pinyin"]
+        english = "I also want to buy " + noun + "."
+        phrase = dict(id="phrase:"+text, kind="phrase", text=text, pinyin=pinyin,
+                      english=english, answers=[english], chinese_answers=[text], tokens=tokens,
+                      topic=item["topic"], region="TW", script="Hant", status="ready", characters=[],
+                      explanation="Subject + 也 (also) + 要 (want) + 買 (buy) + object. 也 comes before the verb phrase.",
+                      explanation_origin="Generated locally from a constrained grammar template",
+                      sources=item["sources"])
+        db.execute("INSERT OR IGNORE INTO items VALUES (?,?)", (phrase["id"], encode(phrase)))
+        self._enroll(db, phrase["id"], after)
 
     def _mastered(self, db):
         return {r[0] for r in db.execute("SELECT item_id FROM progress WHERE mode IN ('flashcards','drawing') AND status IN ('mastered','review')")}
@@ -145,9 +171,12 @@ class Store:
     def state(self):
         with self.db() as db:
             self._reviews(db)
-            items = self._items(db)
             mastered = self._mastered(db)
             session = self._session(db)
+            for row in db.execute("SELECT item_id,added FROM expansions").fetchall():
+                if len(json.loads(row["added"])) < 2:
+                    self._fill_expansion(db, self._item(db, row["item_id"]), session, json.loads(row["added"]))
+            items = self._items(db)
             progress = [dict(r) for r in db.execute("SELECT * FROM progress")]
             enrolled = {p["item_id"] for p in progress}
             for item in items.values():
@@ -160,11 +189,13 @@ class Store:
             correct = db.execute("SELECT COUNT(*) FROM attempts WHERE correct=1").fetchone()[0]
             recent = [dict(r) for r in db.execute("SELECT * FROM attempts ORDER BY id DESC LIMIT 8")]
             pending = [dict(r) for r in db.execute("SELECT * FROM pending")]
+            unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
+                          for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
             return {"settings": self._settings(db), "items": list(items.values()), "session": session,
                     "stats": {"attempts": count, "correct": correct, "mastered": len(mastered),
                               "reviews": sum(p["status"] == "review" for p in progress),
                               "active": sum(p["status"] == "active" for p in progress)},
-                    "recent": recent, "pending": pending}
+                    "recent": recent, "pending": pending, "pending_expansions": unfinished}
 
     def update_settings(self, values):
         allowed = {"probability", "timezone", "interests", "interest_text", "onboarded"}
@@ -283,15 +314,61 @@ class Store:
         row = db.execute("SELECT added FROM expansions WHERE item_id=?", (item["id"],)).fetchone()
         if row:
             return []
+        db.execute("INSERT INTO expansions VALUES (?, '[]')", (item["id"],))
+        return self._fill_expansion(db, item, session, [])
+
+    def _fill_expansion(self, db, item, session, existing):
         enrolled = {r[0] for r in db.execute("SELECT DISTINCT item_id FROM progress")}
         candidates = [i for i in self._items(db).values() if i["kind"] == "word" and
-                      i["topic"] == item["topic"] and i["id"] not in enrolled and
+                      ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["id"] in i.get("related_to", [])) and i["id"] not in enrolled and
                       all(c in self.hanzi for c in i["text"])]
-        added = self.rng.sample(candidates, min(2, len(candidates)))
+        if len(candidates) < 2-len(existing):
+            candidates.extend(self._dictionary_neighbors(db, item, enrolled | {i["id"] for i in candidates}))
+        added = self.rng.sample(candidates, min(2-len(existing), len(candidates)))
         for entry in added:
             self._enroll(db, entry["id"], after=session)
-        db.execute("INSERT INTO expansions VALUES (?,?)", (item["id"], encode([i["id"] for i in added])))
+        db.execute("UPDATE expansions SET added=? WHERE item_id=?", (encode(existing+[i["id"] for i in added]), item["id"]))
         return [i["text"] for i in added]
+
+    def _dictionary_neighbors(self, db, item, exclude):
+        """Prepare contextual candidates locally when the curated topic pool runs low."""
+        terms = {
+            "clothing":["shirt","sweater","socks","jacket","clothing","shoes"],
+            "technology":["computer","keyboard","telephone","software","printer"],
+            "food":["tea","coffee","milk","fruit","bread","rice"],
+            "travel":["train","bus","ticket","station","transport"],
+            "people":["student","teacher","school","friend","family"],
+            "essentials":["person","good","small","big"],
+        }.get(item["topic"], [w for w in re.findall(r"[a-z]+",item["english"].lower()) if len(w)>3][:2])
+        if not terms:
+            return []
+        existing_forms = {i["text"] for i in self._items(db).values()}
+        rows = db.execute("SELECT * FROM dictionary WHERE length(traditional)<=4 AND (" +
+                          " OR ".join("meanings LIKE ?" for _ in terms) + ") LIMIT 800", ["%"+t+"%" for t in terms]).fetchall()
+        self.rng.shuffle(rows)
+        prepared=[]
+        for row in rows:
+            form=row["traditional"]
+            if form in existing_forms or not all(c in self.hanzi for c in form):
+                continue
+            meanings=json.loads(row["meanings"])
+            sense=next((s for s in meanings if len(s)<=40 and s[:1].islower() and not re.search(r"[()\[\];]",s) and
+                        any(re.search(r"\b"+re.escape(t)+r"s?\b",s) for t in terms)),None)
+            if not sense:
+                continue
+            entry=dict(id=form+":"+hashlib.sha256((row["pinyin"]+sense).encode()).hexdigest()[:8],
+                       kind="word",text=form,pinyin=row["pinyin"],english=sense,answers=[sense],
+                       chinese_answers=[form],topic=item["topic"],tokens=[],region="TW",script="Hant",status="ready",
+                       related_to=[item["id"]],explanation="Related vocabulary selected from local dictionary meanings. Explore its character construction below.",
+                       explanation_origin="Dictionary-backed construction; fuller explanation available with an optional provider",
+                       characters=construction(form,self.hanzi),sources=sources_for(form))
+            if entry["id"] in exclude:
+                continue
+            db.execute("INSERT OR IGNORE INTO items VALUES (?,?)",(entry["id"],encode(entry)))
+            prepared.append(entry);existing_forms.add(form)
+            if len(prepared)>=4:
+                break
+        return prepared
 
     def _score(self, db, prompt, correct, hint=False):
         item = self._item(db, prompt["item_id"])
@@ -352,7 +429,7 @@ class Store:
                                     raise ValueError("Invalid drawing coordinates.")
                         data = self.hanzi[plan["character"]]
                         reference = [[[x, 900-y] for x, y in data["medians"][j]] for j in plan["missing"]]
-                        details.append(shape_score(strokes, reference))
+                        details.append(shape_score(strokes, reference, normalize=prompt["level"]==3))
                 correct = all(d["correct"] for d in details)
             else:
                 text = answer.get("text", "")
@@ -449,7 +526,7 @@ class Store:
                 raise ValueError("This entry has characters outside the local drawing dataset. Choose another entry for now.")
             item_id = form+":"+hashlib.sha256((row["pinyin"]+sense).encode()).hexdigest()[:8]
             item = dict(id=item_id, kind="word", text=form, pinyin=row["pinyin"], english=sense,
-                        answers=[sense], chinese_answers=[form], topic=values.get("topic", "custom"),
+                        answers=[sense], chinese_answers=[form], topic=infer_topic([sense]),
                         tokens=[], region="TW", script="Hant", status="ready",
                         explanation="Local dictionary entry. Character construction is shown below. Generate a sourced explanation to add a fuller contextual note.",
                         explanation_origin="Dictionary-backed construction; LLM explanation not generated yet",

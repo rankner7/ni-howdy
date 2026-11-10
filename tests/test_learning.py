@@ -63,6 +63,12 @@ class LearningTests(unittest.TestCase):
         self.assertFalse(shape_score(target[:1], target)["correct"])
         self.assertFalse(shape_score([[[0, 0], [1024, 1024]]], target)["correct"])
 
+    def test_full_glyph_tolerates_scale_and_translation(self):
+        target = [[[100,200],[800,200]], [[450,100],[450,800]]]
+        drawn = [[[x*.6+160,y*.6+70] for x,y in s] for s in target]
+        self.assertTrue(shape_score(drawn,target,normalize=True)['correct'])
+        self.assertFalse(shape_score(drawn,target,normalize=False)['correct'])
+
 
 if __name__ == "__main__":
     unittest.main()

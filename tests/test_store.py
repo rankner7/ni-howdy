@@ -99,6 +99,29 @@ class StoreTests(unittest.TestCase):
         self.store.restore(original)
         self.assertEqual(self.store.state()['settings']['probability'], .05)
 
+    def test_new_noun_creates_phrase_with_mastery_gate(self):
+        with self.store.db() as db:
+            self.store._enroll(db, '毛衣')
+            phrase = self.store._item(db, 'phrase:我也要買毛衣。')
+            self.assertEqual(phrase['tokens'], ['我','也','要','買','毛衣'])
+            self.assertEqual(phrase['english'], 'I also want to buy a sweater.')
+        entry = next(i for i in self.store.state()['items'] if i['id']==phrase['id'])
+        self.assertEqual(entry['coverage'], 0)
+
+    def test_related_dictionary_candidates_when_topic_exhausted(self):
+        with self.store.db() as db:
+            for item in list(self.store._items(db).values()):
+                if item['kind']=='word' and item['topic']=='food':
+                    self.store._enroll(db,item['id'])
+            db.execute("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES ('豆漿','豆浆','dòu jiāng','doujiang','[\"soy milk\"]')")
+            result=self.store._expand(db,self.store._item(db,'茶'),1)
+            self.assertIn('豆漿',result)
+            row=db.execute("SELECT added FROM expansions WHERE item_id='茶'").fetchone()
+            import json
+            self.assertEqual(len(json.loads(row[0])),1)
+            # An unfinished expansion persists instead of falsely claiming two additions.
+        self.assertTrue(any(x['item_id']=='茶' and x['remaining']==1 for x in self.store.state()['pending_expansions']))
+
 
 if __name__ == '__main__':
     unittest.main()
