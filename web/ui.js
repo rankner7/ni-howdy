@@ -13,6 +13,12 @@ export async function api(path, body) {
 
 export function toast(message) {
   const node = $('#toast'); node.textContent = message; node.classList.add('visible');
+  const dialog=$('#dialog');
+  if(dialog.open){
+    let feedback=$('.dialog-message',dialog);
+    if(!feedback){feedback=document.createElement('p');feedback.className='dialog-message notice';feedback.setAttribute('role','status');$('.dialog-heading',dialog).after(feedback);}
+    feedback.textContent=message;
+  }
   clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove('visible'), 5000);
 }
 

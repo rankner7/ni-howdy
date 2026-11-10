@@ -16,8 +16,10 @@ export async function practice(mode, state, onUpdate, addExample) {
   $('.new-session').onclick=async()=>{try{await api('session',{});await load();await onUpdate();}catch(e){toast(e.message);}};
   let prompt, drawing, busy=false, audio;
   async function load(){
-    prompt=await api('prompt',{mode});
-    if(!document.querySelector('#practice-card'))return;
+    const next=await api('prompt',{mode});
+    if(main.dataset.route!==mode||!document.querySelector('#practice-card'))return;
+    if(prompt?.id!==next.id&&audio){audio.pause();URL.revokeObjectURL(audio.src);audio=null;}
+    prompt=next;
     render();
     if(!prompt.empty){
       const key=`nihowdy:example:${mode}:${prompt.level}`;
@@ -59,11 +61,13 @@ export async function practice(mode, state, onUpdate, addExample) {
     $('#answer-form').onsubmit=submit;
   }
   async function play(){
-    const button=$('.audio-button');button.disabled=true;$('.audio-status').textContent='Preparing local audio…';
+    const button=$('.audio-button'),status=$('.audio-status'),error=$('#practice-error');
+    button.disabled=true;status.textContent='Preparing local audio…';
     try{
       if(!audio){const r=await fetch('/api/audio?prompt='+encodeURIComponent(prompt.id));if(!r.ok)throw new Error((await r.json()).error);audio=new Audio(URL.createObjectURL(await r.blob()));}
-      audio.currentTime=0;await audio.play();$('.audio-status').textContent='Taiwan Mandarin · locally generated voice';
-    }catch(e){$('#practice-error').textContent=e.message;$('.audio-status').textContent='Audio unavailable. This does not count as a miss.';}
+      if(main.dataset.route!==mode)return;
+      audio.currentTime=0;await audio.play();status.textContent='Taiwan Mandarin · locally generated voice';
+    }catch(e){error.textContent=e.message;status.textContent='Audio unavailable. This does not count as a miss.';}
     finally{button.disabled=false;}
   }
   async function proofread(text){

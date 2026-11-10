@@ -1,17 +1,20 @@
 import {$, $$, api, escape, modal, toast, showInfo, pageHeader} from './ui.js';
 import {practice} from './practice.js';
 
-let state;
+let state, routeVersion=0;
 const topics=[['essentials','Everyday essentials','日'],['food','Food & drink','茶'],['technology','Technology','電'],['clothing','Clothing','衣'],['travel','Getting around','車'],['people','People & learning','人']];
 const labels={home:'My learning',flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases & grammar',library:'Word library',mastered:'Mastered bin',settings:'Settings'};
 
 async function refresh(){state=await api('state');$('#mastered-count').textContent=state.stats.mastered;}
 async function route(){
+  const revision=++routeVersion;
   const page=location.hash.slice(1)||'home';
+  $('#main').dataset.route=page;
   $$('.sidebar nav a').forEach(a=>{const active=a.dataset.route===page;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   $('#breadcrumb').textContent=labels[page]||labels.home;
   try{
     await refresh();
+    if(revision!==routeVersion)return;
     if(['flashcards','drawing','phrases'].includes(page))return await practice(page,state,refresh,addExample);
     if(page==='library'||page==='mastered')return library(page);
     if(page==='settings')return settings();
