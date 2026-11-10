@@ -1,6 +1,6 @@
 # Ni-howdy implementation plan
 
-Status: planning only. No application implementation or deployment is authorized by this document.
+Status: implementation authorized in the subsequent conversation. The local app is implemented; see README.md for setup, checks, and current limitations. This document retains the original specification.
 
 ## Scope
 
@@ -195,4 +195,4 @@ These are researched candidates, not selected or tested dependencies.
 
 Required behavioral checks include: one success advances; failures 1 and 2 retain level while failure 3 demotes; lowest-level failures boost selection; info access produces exactly one failed attempt; reload preserves streaks and sessions; punctuation changes fail unless explicitly accepted while case changes pass; two mastery modes trigger only one expansion; review dates cannot reroll; missing days are caught up; the 80% boundary includes function words; stroke reordering alone does not fail a recognizable glyph; unchanged missing-stroke templates fail; and infrastructure failures do not alter learner progress.
 
-No code, models, datasets, accounts, or hosting have been installed or created during planning. The immediate next implementation milestone, once requested, is the feasibility and content sample stage.
+Implementation uses a Python/SQLite local service and browser-native modules. The repository includes dictionary data, character geometry, and a curated starter catalog; setup installs a local Taiwan Mandarin speech model. No account system or hosted deployment is included. Current implementation details and verification commands are recorded in README.md.
