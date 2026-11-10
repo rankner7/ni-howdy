@@ -35,6 +35,7 @@ class Audio:
                 return output
             import numpy as np
             import onnxruntime as ort
+            ort.disable_telemetry_events()
             from pypinyin.style.bopomofo import converter
             if self.session is None:
                 options = ort.SessionOptions()
