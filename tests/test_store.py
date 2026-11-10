@@ -116,6 +116,29 @@ class StoreTests(unittest.TestCase):
         results=self.store.search('行')
         self.assertTrue(any(r['id']==second and r['source']=='dictionary' for r in results))
 
+    def test_interrupted_dictionary_import_rolls_back_and_can_retry(self):
+        with self.store.db() as db:
+            db.execute("INSERT INTO dictionary(traditional,pinyin) VALUES ('舊','jiù')")
+            db.execute("INSERT INTO settings VALUES ('dictionary_version','1')")
+        row=('我','我','wǒ','wo','["I"]')
+        def interrupt(message):
+            if 'Indexed' in message:
+                raise KeyboardInterrupt
+        with patch('nihowdy.store.dictionary_rows',return_value=iter([row]*5001)):
+            with self.assertRaises(KeyboardInterrupt):
+                self.store.import_dictionary(progress=interrupt)
+        with self.store.db() as db:
+            self.assertEqual(db.execute('SELECT traditional FROM dictionary').fetchone()[0],'舊')
+            self.assertEqual(db.execute("SELECT value FROM settings WHERE key='dictionary_version'").fetchone()[0],'1')
+        messages=[]
+        with patch('nihowdy.store.dictionary_rows',return_value=iter([row])):
+            self.store.import_dictionary(progress=messages.append)
+        self.assertTrue(any('Indexed 1 entries' in m for m in messages))
+        with patch('nihowdy.store.dictionary_rows') as source:
+            self.store.import_dictionary(progress=messages.append)
+            source.assert_not_called()
+        self.assertTrue(any('existing dictionary index' in m for m in messages))
+
     def test_related_dictionary_candidates_when_topic_exhausted(self):
         with self.store.db() as db:
             for item in list(self.store._items(db).values()):

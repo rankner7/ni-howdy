@@ -141,21 +141,25 @@ def main():
     parser.add_argument("--data-dir", default=os.environ.get("NIHOWDY_DATA_DIR", str(ROOT / ".data")))
     args = parser.parse_args()
     directory = Path(args.data_dir)
-    print("Preparing the local dictionary…", flush=True)
-    store = Store(directory / "nihowdy.sqlite")
-    store.import_dictionary()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    server.store = store
-    server.audio = Audio(directory)
-    server.content = ContentService(store)
-    server.proofreader = Proofreader(store)
-    print(f"Ni-howdy is ready: http://localhost:{args.port}\nPress Ctrl+C to stop.", flush=True)
+    server = None
     try:
+        print("Loading character data…", flush=True)
+        store = Store(directory / "nihowdy.sqlite")
+        store.import_dictionary(progress=lambda message: print(message, flush=True))
+        print("Preparing local spelling and grammar checks…", flush=True)
+        proofreader = Proofreader(store)
+        server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+        server.store = store
+        server.audio = Audio(directory)
+        server.content = ContentService(store)
+        server.proofreader = proofreader
+        print(f"Ni-howdy is ready: http://localhost:{args.port}\nPress Ctrl+C to stop.", flush=True)
         server.serve_forever()
     except KeyboardInterrupt:
-        pass
+        print("\nNi-howdy stopped. Run ./run.sh to start again.", flush=True)
     finally:
-        server.server_close()
+        if server is not None:
+            server.server_close()
 
 
 if __name__ == "__main__":

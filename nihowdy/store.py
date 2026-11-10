@@ -9,6 +9,8 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from itertools import islice
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
@@ -77,20 +79,31 @@ class Store:
                 db.execute("BEGIN IMMEDIATE")
                 yield db
                 db.commit()
-            except Exception:
+            except BaseException:
                 db.rollback()
                 raise
             finally:
                 db.close()
 
-    def import_dictionary(self):
+    def import_dictionary(self, progress=None):
+        report = progress or (lambda message: None)
+        started = monotonic()
         with self.db() as db:
             version = db.execute("SELECT value FROM settings WHERE key='dictionary_version'").fetchone()
-            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone() or not version:
+            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone() or not version or version[0] != '2':
+                report("Building the local dictionary index (first launch or data update)…")
                 db.execute("DELETE FROM dictionary")
-                db.executemany("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES (?,?,?,?,?)",
-                               dictionary_rows())
+                rows = iter(dictionary_rows())
+                count = 0
+                while batch := list(islice(rows, 5000)):
+                    db.executemany("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES (?,?,?,?,?)", batch)
+                    count += len(batch)
+                    report(f"  Indexed {count:,} entries ({monotonic()-started:.1f}s)…")
                 db.execute("INSERT OR REPLACE INTO settings VALUES ('dictionary_version','2')")
+            else:
+                count = db.execute("SELECT COUNT(*) FROM dictionary").fetchone()[0]
+                report(f"Using the existing dictionary index ({count:,} entries).")
+        report(f"Dictionary ready in {monotonic()-started:.1f}s.")
 
     def _settings(self, db):
         return {r["key"]: json.loads(r["value"]) for r in db.execute("SELECT * FROM settings")}
