@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f2">
+  <meta name="description" content="Learn Taiwan Mandarin through words that matter to you. A personal, local learning space.">
+  <title>Ni-howdy · Your Mandarin, in context</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="#home" aria-label="Ni-howdy home"><span class="brand-mark" lang="zh-Hant">你好</span><span>ni-howdy<span class="brand-dot">.</span></span></a>
+    <p class="sidebar-caption">A LITTLE EVERY DAY</p>
+    <nav aria-label="Main navigation">
+      <a href="#home" data-route="home"><span class="nav-symbol">⌂</span> My learning</a>
+      <p class="nav-label">PRACTISE</p>
+      <a href="#flashcards" data-route="flashcards"><span class="nav-symbol">▣</span> Flashcards</a>
+      <a href="#drawing" data-route="drawing"><span class="nav-symbol">✎</span> Character drawing</a>
+      <a href="#phrases" data-route="phrases"><span class="nav-symbol">☷</span> Phrases & grammar</a>
+      <p class="nav-label">YOUR SPACE</p>
+      <a href="#library" data-route="library"><span class="nav-symbol">▤</span> Word library</a>
+      <a href="#mastered" data-route="mastered"><span class="nav-symbol">✧</span> Mastered bin <span id="mastered-count" class="nav-count">0</span></a>
+      <a href="#settings" data-route="settings"><span class="nav-symbol">⚙</span> Settings</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span> Your local learning space<p>繁體中文 · Taiwan Mandarin</p></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span id="breadcrumb">My learning</span><div><span class="locale-pill">繁 <span>Taiwan Mandarin</span></span><span class="avatar" title="Local learner">R</span></div></header>
+    <main id="main" tabindex="-1"><div class="loading">Opening your learning space…</div></main>
+    <footer>Made for curiosity. Built for a little progress every day.<span>Traditional Chinese · Hanyu Pinyin</span></footer>
+  </div>
+  <dialog id="dialog"></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
