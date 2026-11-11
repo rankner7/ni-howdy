@@ -37,6 +37,25 @@ An explicit request for a locked compound is saved as **waiting**, without inser
 
 Existing learning records are retained. These admission checks govern newly enrolled words; they do not erase past progress or withdraw an already-enrolled compound when a component is later demoted. Automatically selected words become eligible in the next practice session as before. Manually queued words unlock when their prerequisites are satisfied.
 
+## Delete and generate entries
+
+The word library provides a **Delete** action for each unmastered entry and checkboxes for deleting up to 100 entries together. An entry mastered in any practice mode, including one awaiting hard review, is protected. A batch containing a protected entry is rejected without deleting the other selections.
+
+Deletion removes the entry from the current library and both vocabulary decks, or cancels its waiting request. Unfinished prompts for that entry are retired without recording an incorrect attempt. Phrases containing deleted vocabulary pause until the word is restored. Historical attempts remain in the all-time statistics.
+
+**Undo** is available in the notification for 15 seconds and restores the previous difficulty, failure streak, and other progress. You can also find a deleted entry through **Add example** and choose **Restore** later. Deletion and saved progress are included in backups.
+
+Deleted words remain eligible for future suggestions. A new mastery event or an explicit generation request may choose them again using the normal frequency and prerequisite rules. Merely refreshing the library does not immediately re-add deleted entries through pending background expansions. Reintroduced words join the next practice session.
+
+The separate **Generate entries** button accepts:
+
+- An existing word currently mastered in flashcards or drawing. Mastered word cards also offer **Generate related entries** with that word selected.
+- A built-in category, or a short custom category in English, matched against local dictionary meanings.
+
+Choose between 1 and 20 entries per request (default: 2). Generation samples new eligible forms without replacement, using the same corpus counts and compound prerequisites as automatic expansion. It uses the local dictionary and does not call an AI provider. Results list the actual additions; a small or empty eligible pool is reported explicitly. The 163,701 corpus forms are the frequency table's coverage; the usable generation pool also requires dictionary matches, supported drawing characters, and satisfied prerequisites.
+
+Manual generation is separate from the once-only first-mastery expansion event. It may be repeated and does not consume that automatic event. Newly generated vocabulary is added to flashcards and drawing for the next session.
+
 ## Rebuild the frequency projection
 
 Download the official workbook from the source page, then run:

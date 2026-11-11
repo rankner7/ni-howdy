@@ -40,7 +40,7 @@ English answers match a stored list of legitimate translations. Case and surroun
 
 ## Personal vocabulary and explanations
 
-Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. Supported words join both vocabulary modes once their meaningful parts are mastered. A requested compound waits in the library with its prerequisites and unlocks automatically when ready. Suitable nouns also receive locally generated phrase templates; the 80% rule still controls when those phrases appear.
+Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. The word library also supports individual/batch deletion of unmastered entries with Undo, and a separate **Generate entries** action using a mastered word or category. Deleted words remain eligible for future suggestions. Supported words join both vocabulary modes once their meaningful parts are mastered. A requested compound waits in the library with its prerequisites and unlocks automatically when ready. Suitable nouns also receive locally generated phrase templates; the 80% rule still controls when those phrases appear.
 
 Starter entries include cached explanations, character construction, related vocabulary examples, and source links. New dictionary entries receive source-backed construction notes. A fuller LLM explanation can be generated once and stored when an optional provider is configured. Entirely novel phrases stay pending until validation; they never silently enter graded practice.
 
