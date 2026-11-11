@@ -90,23 +90,27 @@ class LibraryTests(unittest.TestCase):
         self.assertFalse(any(i['id']=='電腦' for i in self.store.state()['items']))
 
     def test_deleted_prerequisite_pauses_phrase_even_at_eighty_percent(self):
-        phrase_id='phrase:我也要喝茶。'
-        for item_id in ['我','也','要','喝']:
+        for item_id in ['我','也','要','喝','茶']:
             self.master(item_id)
-        self.store.delete_entries(['茶'])
+        self.store.next_prompt('phrases')
         with self.store.db() as db:
-            db.execute("DELETE FROM progress WHERE mode='phrases' AND item_id!=?",(phrase_id,))
+            # Deletion here is deliberately unmastered; isolate a legacy phrase
+            # with an unknown, deleted object to test the practice filter.
+            db.execute("UPDATE progress SET status='active' WHERE item_id='茶'")
+        self.store.delete_entries(['茶'])
         self.assertTrue(self.store.next_prompt('phrases')['empty'])
-        phrase=next(i for i in self.store.state()['items'] if i['id']==phrase_id)
-        self.assertEqual(phrase['coverage'],.8)
-        self.assertTrue(phrase['removed_tokens'])
+        self.assertTrue(all(i['kind']=='word' for i in self.store.state()['items']))
 
     def test_deleting_template_does_not_break_readding_its_word(self):
-        self.store.add({'source':'catalog','id':'咖啡'})
-        phrase='phrase:我也要買咖啡。'
+        for item_id in ['我','也','要','喝','茶']:
+            self.master(item_id)
+        prompt=self.store.next_prompt('phrases')
+        with self.store.db() as db:
+            phrase=db.execute('SELECT item_id FROM prompts WHERE id=?',(prompt['id'],)).fetchone()[0]
         self.store.delete_entries([phrase])
-        self.store.add({'source':'catalog','id':'咖啡'})
-        self.assertFalse(any(i['id']==phrase for i in self.store.state()['items']))
+        self.store.add({'source':'catalog','id':'茶'})
+        with self.store.db() as db:
+            self.assertTrue(self.store._item(db,phrase,include_deleted=True)['deleted'])
 
     def test_generation_requires_a_mastered_input_word(self):
         with self.assertRaises(ValueError):self.store.generate_entries({'source':'word','id':'茶'})

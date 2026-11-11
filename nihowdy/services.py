@@ -64,14 +64,15 @@ class ContentService:
             # Restrict construction to known, sense-resolved entries.
             catalog = [dict(id=i["id"], text=i["text"], pinyin=i["pinyin"], english=i["english"])
                        for i in self.store._items(db).values() if i["kind"] == "word"]
-        result = self.generate("Validate or translate the requested phrase using only vocabulary in catalog. Return {valid: boolean, reason: string, text: Traditional Chinese sentence ending in 。 or ？ or ！, english: punctuated English translation, tokens: catalog id[], explanation: short grammar explanation}. Do not approve an unnatural sentence. Every character except punctuation must come from the selected tokens.",
+        result = self.generate("Validate or translate the requested phrase using only vocabulary in catalog. Return {valid: boolean, reason: string, text: Traditional Chinese sentence ending in 。 or ？ or ！, english: punctuated English translation, tokens: catalog id[], explanation: short grammar explanation}. Require more than three vocabulary tokens. Do not approve an unnatural sentence. Every character except punctuation must come from the selected tokens.",
                                {"request":text, "catalog":catalog})
         if result.get("valid") is not True:
             raise ValueError("Not added: " + str(result.get("reason", "Could not validate this phrase."))[:400])
         lookup = {i["id"]:i for i in catalog}
         tokens = result.get("tokens", [])
         sentence = result.get("text", "")
-        if (not tokens or len(tokens) > 40 or any(t not in lookup for t in tokens) or
+        if (not isinstance(tokens, list) or not isinstance(sentence, str) or not tokens or
+            len(tokens) > 40 or any(not isinstance(t, str) or t not in lookup for t in tokens) or
             "".join(lookup[t]["text"] for t in tokens) != re.sub(r"[。，？！、；：]", "", sentence)):
             raise ValueError("The proposed phrase did not pass the local vocabulary check. It remains pending.")
         english = result.get("english", "")
@@ -86,10 +87,11 @@ class ContentService:
                     explanation_origin="Model-checked grammar with local vocabulary validation",
                     generation={"model":self.model,"created_at":datetime.now(timezone.utc).isoformat()})
         with self.store.db() as db:
-            db.execute("INSERT OR IGNORE INTO items VALUES (?,?)", (item["id"], json.dumps(item, ensure_ascii=False)))
-            self.store._enroll(db, item["id"])
+            # Recheck coverage under the write lock after the provider returns.
+            item, added = self.store._save_phrase(db, item)
             db.execute("DELETE FROM pending WHERE id=?", (pending_id,))
-        return {"item":item, "message":"Validated and added. Practice unlocks when at least 80% of its words are mastered."}
+        return {"added": added, "message": "Validated and added to phrase practice." if added else
+                "This phrase is already stored. Its practice and mastery history have been preserved."}
 
 
 class Proofreader:

@@ -81,6 +81,9 @@ class StoreTests(unittest.TestCase):
         with self.store.db() as db:
             for word, mode in [('我','flashcards'),('也','drawing'),('要','flashcards'),('喝','drawing')]:
                 db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(word,mode))
+        self.assertTrue(self.store.next_prompt('phrases')['empty'])
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review' WHERE item_id='茶' AND mode='drawing'")
         self.assertFalse(self.store.next_prompt('phrases').get('empty', False))
 
     def test_prompt_recovery_and_audio_only(self):
@@ -103,14 +106,12 @@ class StoreTests(unittest.TestCase):
         self.store.restore(original)
         self.assertEqual(self.store.state()['settings']['probability'], .05)
 
-    def test_new_noun_creates_phrase_with_mastery_gate(self):
+    def test_enrolling_a_noun_does_not_pregenerate_phrases(self):
         with self.store.db() as db:
+            before = db.execute("SELECT COUNT(*) FROM items WHERE json_extract(data,'$.kind')='phrase'").fetchone()[0]
             self.store._enroll(db, '毛衣')
-            phrase = self.store._item(db, 'phrase:我也要買毛衣。')
-            self.assertEqual(phrase['tokens'], ['我','也','要','買','毛衣'])
-            self.assertEqual(phrase['english'], 'I also want to buy a sweater.')
-        entry = next(i for i in self.store.state()['items'] if i['id']==phrase['id'])
-        self.assertEqual(entry['coverage'], 0)
+            after = db.execute("SELECT COUNT(*) FROM items WHERE json_extract(data,'$.kind')='phrase'").fetchone()[0]
+            self.assertEqual(before, after)
 
     def test_dictionary_search_keeps_other_senses_available(self):
         with self.store.db() as db:

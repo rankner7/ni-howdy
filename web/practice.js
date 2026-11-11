@@ -28,7 +28,7 @@ export async function practice(mode, state, onUpdate, addExample) {
   }
   function render(){
     const card=$('#practice-card');
-    if(prompt.empty){card.innerHTML=`<div class="empty-state"><span class="empty-symbol">${mode==='phrases'?'語':'✧'}</span><h2>${mode==='phrases'?'First, give your words a foundation.':'A good place to pause.'}</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#library':'#mastered'}">${mode==='phrases'?'Explore phrase prerequisites':'Visit your mastered bin'} →</a></div>`;return;}
+    if(prompt.empty){card.innerHTML=`<div class="empty-state"><span class="empty-symbol">${mode==='phrases'?'語':'✧'}</span><h2>${mode==='phrases'?'First, give your words a foundation.':'A good place to pause.'}</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#mastered'}">${mode==='phrases'?'Practise vocabulary':'Visit your mastered bin'} →</a></div>`;return;}
     const isChinese=mode==='phrases'&&prompt.level===2;
     card.innerHTML=`<div class="practice-top"><span class="pill">${prompt.review?'↻ Review · ':''}${escape(prompt.level_name)}</span><span class="attempt-counter">${prompt.failures} / 3 misses</span><button class="icon-button prompt-info" aria-label="Show explanation and count one incorrect attempt">ⓘ</button></div>
       <div class="level-track">${prompt.levels.map((l,i)=>`<span class="${i<=prompt.level?'filled':''}" title="${escape(l)}"></span>`).join('')}</div>

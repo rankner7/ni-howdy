@@ -15,8 +15,9 @@ from zoneinfo import ZoneInfo
 
 from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
-from .learning import (LEVELS, correct_answer, phrase_coverage, review_trials,
+from .learning import (LEVELS, correct_answer, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
+from .phrases import candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
 from .vocabulary import VocabularyPolicy, reading_key
 
 
@@ -66,13 +67,11 @@ class Store:
                 db.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (key, encode(value)))
             if not db.execute("SELECT 1 FROM items LIMIT 1").fetchone():
                 for item in starter_items():
-                    db.execute("INSERT INTO items VALUES (?,?)", (item["id"], encode(item)))
+                    if item['kind'] == 'word':
+                        db.execute("INSERT INTO items VALUES (?,?)", (item["id"], encode(item)))
                 for word in ["我", "你", "也", "要", "喝", "水", "茶", "好", "一", "二", "三", "電腦"]:
                     if not self._enroll(db, word):
                         self._add_prerequisites(db,self._item(db,word))
-                for item in self._items(db).values():
-                    if item["kind"] == "phrase":
-                        self._enroll(db, item["id"])
 
     @contextmanager
     def db(self):
@@ -148,8 +147,6 @@ class Store:
                 continue
             db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level,eligible_after) VALUES (?,?,?,?)",
                        (item_id, mode, self.lowest(item, mode), after))
-        if item["kind"] == "word":
-            self._generate_template(db, item, after)
         return True
 
     def _lexeme(self, db, text, pinyin):
@@ -223,28 +220,82 @@ class Store:
             added.append(item['text'])
         return {'added':added,'message':'Added prerequisite vocabulary: '+', '.join(added)+'.'}
 
-    def _generate_template(self, db, item, after):
-        """Cache a productive sentence template for suitable concrete nouns."""
-        if item["topic"] not in ("food", "clothing", "technology") or item["text"] in ("喝", "吃", "電", "腦", "手", "網路"):
-            return
-        meaning = item["english"]
-        if len(meaning) > 40 or meaning.startswith("to ") or "(" in meaning or ";" in meaning:
-            return
-        noun = next((a for a in item["answers"] if a.startswith(("a ", "an "))), meaning)
-        tokens = ["我", "也", "要", "買", item["id"]]
-        text = "我也要買" + item["text"] + "。"
-        pinyin = "wǒ yě yào mǎi " + item["pinyin"]
-        english = "I also want to buy " + noun + "."
-        phrase = dict(id="phrase:"+text, kind="phrase", text=text, pinyin=pinyin,
-                      english=english, answers=[english], chinese_answers=[text], tokens=tokens,
-                      topic=item["topic"], region="TW", script="Hant", status="ready", characters=[],
-                      explanation="Subject + 也 (also) + 要 (want) + 買 (buy) + object. 也 comes before the verb phrase.",
-                      explanation_origin="Generated locally from a constrained grammar template",
-                      sources=item["sources"])
-        db.execute("INSERT OR IGNORE INTO items VALUES (?,?)", (phrase["id"], encode(phrase)))
-        if self._item(db,phrase['id'],include_deleted=True).get('deleted'):
-            return
-        self._enroll(db, phrase["id"], after)
+    def _phrase_history(self, db):
+        """All phrases, including deleted/mastered ones, reserve their sentence.
+
+        This index is derived from persisted items/progress, so old backups keep
+        their deduplication history without a separate migration or backup format.
+        Prefer a mastered record when an old backup contains punctuation variants.
+        """
+        progress = {r['item_id']: dict(r) for r in db.execute("SELECT * FROM progress WHERE mode='phrases'")}
+        history = {}
+        for item in self._items(db, include_deleted=True).values():
+            if item['kind'] != 'phrase':
+                continue
+            p = progress.get(item['id'], {})
+            rank = (p.get('status') in ('mastered', 'review'), p.get('attempts', 0), bool(p))
+            key = phrase_key(item['text'])
+            if key not in history or rank > history[key][2]:
+                history[key] = (item, p, rank)
+        return history
+
+    def _phrase_options(self, db, generate=False):
+        """Prepare a small, varied queue; return eligible records and families."""
+        items = self._items(db)
+        mastered = self._mastered(db)
+        possible = {phrase_key(i['text']): i for i in phrase_candidates(items, mastered) if i}
+        history = self._phrase_history(db)
+        options = {}
+        for key, (item, progress, _) in history.items():
+            if item.get('deleted') or not progress or not phrase_eligible(item['tokens'], mastered):
+                continue
+            if any(t not in items or items[t]['kind'] != 'word' for t in item['tokens']):
+                continue
+            # Older automatic templates are only kept in practice if a current,
+            # semantically constrained pattern can produce the same sentence.
+            custom = item.get('explanation_origin') == 'Model-checked grammar with local vocabulary validation'
+            if key in possible or custom:
+                options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
+        if generate:
+            active = sum(items[item_id].get('phrase_engine') == 'local-v2' and
+                         history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'
+                         for item_id in options)
+            groups = {}
+            for key, item in possible.items():
+                if key not in history:
+                    groups.setdefault(item['phrase_family'], []).append(item)
+            # Shuffle families and slots separately so a prolific pattern cannot
+            # crowd out other constructions. Keep at most eight fresh phrases.
+            families = list(groups)
+            self.rng.shuffle(families)
+            for pool in groups.values():
+                self.rng.shuffle(pool)
+            while active < 8 and families:
+                for family in list(families):
+                    item = groups[family].pop()
+                    db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+                    self._enroll(db, item['id'])
+                    options[item['id']] = family
+                    active += 1
+                    if not groups[family]:
+                        families.remove(family)
+                    if active >= 8:
+                        break
+        return options
+
+    def _save_phrase(self, db, item):
+        """Admit validated custom content without resetting an existing sentence."""
+        words = self._items(db)
+        if any(t not in words or words[t]['kind'] != 'word' for t in item['tokens']):
+            raise ValueError('The phrase contains unavailable vocabulary. It remains pending.')
+        if not phrase_eligible(item['tokens'], self._mastered(db)):
+            raise ValueError('A phrase needs more than three words and strictly more than 80% mastered words. It remains pending.')
+        existing = self._phrase_history(db).get(phrase_key(item['text']))
+        if existing:
+            return existing[0], False
+        db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+        self._enroll(db, item['id'])
+        return item, True
 
     def _mastered(self, db):
         return {r[0] for r in db.execute("SELECT item_id FROM progress WHERE mode IN ('flashcards','drawing') AND status IN ('mastered','review')")}
@@ -283,9 +334,9 @@ class Store:
                     source=self._item(db,row['item_id'],include_deleted=True)
                     if not source.get('deleted'):
                         self._fill_expansion(db,source,session,json.loads(row['added']),include_deleted=False)
-            items = self._items(db)
-            all_items=self._items(db,include_deleted=True)
-            removed=set(all_items)-set(items)
+            # Phrases and their history are internal practice data, not library
+            # entries. Do not leak their sentence-bearing IDs in recent activity.
+            items = {key: item for key, item in self._items(db).items() if item['kind'] == 'word'}
             progress = [dict(r) for r in db.execute("SELECT * FROM progress")]
             enrolled = {p["item_id"] for p in progress}
             for item in items.values():
@@ -296,14 +347,10 @@ class Store:
                     item['frequency_count']=self.vocabulary.addition_weight(item['text'])
                     item['missing_prerequisites']=[] if item['enrolled'] else self._missing_prerequisites(db,item)
                     item['waiting']=bool(item.get('requested') and not item['enrolled'])
-                if item["kind"] == "phrase":
-                    item["coverage"] = phrase_coverage(item["tokens"], mastered)
-                    item["missing"] = [t for t in dict.fromkeys(item["tokens"]) if t not in mastered]
-                    item['removed_tokens']=[all_items[t]['text'] for t in item['tokens'] if t in removed]
             count = db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
             correct = db.execute("SELECT COUNT(*) FROM attempts WHERE correct=1").fetchone()[0]
-            recent = [dict(r) for r in db.execute("SELECT * FROM attempts ORDER BY id DESC LIMIT 8")]
-            pending = [dict(r) for r in db.execute("SELECT * FROM pending")]
+            recent = [dict(r) for r in db.execute("SELECT * FROM attempts WHERE mode!='phrases' ORDER BY id DESC LIMIT 8")]
+            pending_count = db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
             unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
                           for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
             return {"settings": self._settings(db), "items": list(items.values()), "session": session,
@@ -311,7 +358,7 @@ class Store:
                     "stats": {"attempts": count, "correct": correct, "mastered": len(mastered),
                               "reviews": sum(p["status"] == "review" for p in progress),
                               "active": sum(p["status"] == "active" for p in progress)},
-                    "recent": recent, "pending": pending, "pending_expansions": unfinished}
+                    "recent": recent, "pending_count": pending_count, "pending_expansions": unfinished}
 
     def update_settings(self, values):
         allowed = {"probability", "timezone", "interests", "interest_text", "onboarded"}
@@ -373,23 +420,32 @@ class Store:
             self._reviews(db)
             self._activate_waiting(db)
             session = self._session(db)
+            phrase_options = self._phrase_options(db, generate=True) if mode == 'phrases' else {}
             outstanding = db.execute("SELECT * FROM prompts WHERE session_id=? AND mode=? AND finished=0 ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
+            if outstanding and mode == 'phrases' and outstanding['item_id'] not in phrase_options:
+                db.execute('UPDATE prompts SET finished=1,payload=? WHERE id=?',
+                           (encode({'cancelled': True}), outstanding['id']))
+                outstanding = None
             if outstanding:
                 return self._public_prompt(db, outstanding)
-            mastered = self._mastered(db)
-            removed={key for key,item in self._items(db,include_deleted=True).items() if item.get('deleted')}
             candidates = []
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered' AND eligible_after<?", (mode, session)):
                 item = self._item(db, row["item_id"])
-                if mode == "phrases" and (phrase_coverage(item["tokens"], mastered) < .8 or removed.intersection(item['tokens'])):
+                if mode == "phrases" and item['id'] not in phrase_options:
                     continue
                 candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode))))
+            if mode == 'phrases':
+                totals = {}
+                for item_id, chance in candidates:
+                    family = phrase_options[item_id]
+                    totals[family] = totals.get(family, 0) + 1
+                candidates = [(item_id, chance / totals[phrase_options[item_id]]) for item_id, chance in candidates]
             previous = db.execute("SELECT item_id FROM prompts WHERE session_id=? AND mode=? ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
             if previous and len(candidates) > 1:
                 candidates = [c for c in candidates if c[0] != previous[0]]
             selected = weighted_choice(candidates, self.rng)
             if selected is None:
-                return {"empty": True, "mode": mode, "message": "No eligible phrases yet. Master at least 80% of a phrase's words in flashcards or drawing." if mode == "phrases" else "Your eligible deck is complete. Start a new session for newly added words, or come back for daily reviews."}
+                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need more than three words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your eligible deck is complete. Start a new session for newly added words, or come back for daily reviews."}
             item = self._item(db, selected)
             progress = db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (selected, mode)).fetchone()
             plan = {"drawing": self._drawing_plan(item, progress["level"])} if mode == "drawing" else {}
@@ -427,8 +483,10 @@ class Store:
         if not row:
             raise ValueError("This practice session has ended. Start a new prompt.")
         if json.loads(row['payload']).get('cancelled'):
-            raise ValueError('This prompt was retired because vocabulary was deleted. Load the next prompt to continue.')
+            raise ValueError('This prompt is no longer eligible. Load the next prompt to continue.')
         self._item(db,row['item_id'])
+        if row['mode'] == 'phrases' and not row['finished'] and row['item_id'] not in self._phrase_options(db):
+            raise ValueError('This phrase needs more mastered vocabulary. Load the next prompt to continue.')
         return row
 
     def _expand(self, db, item, session):
@@ -696,7 +754,7 @@ class Store:
         if not query:
             return []
         with self.db() as db:
-            known = [dict(i, source="catalog") for i in self._items(db,include_deleted=True).values() if query.casefold() in
+            known = [dict(i, source="catalog") for i in self._items(db,include_deleted=True).values() if i['kind'] == 'word' and query.casefold() in
                      (i["text"]+" "+i["english"]+" "+plain_pinyin(i["pinyin"])).casefold()]
             # Literal LIKE escaping avoids wildcards expanding a user query.
             pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -740,7 +798,7 @@ class Store:
                 if not text:
                     raise ValueError("Enter a word or phrase to validate.")
                 pending_id = hashlib.sha256(text.encode()).hexdigest()[:20]
-                message = "No validated match yet. Configure the optional explanation service and use Validate pending, or choose a dictionary match. This entry is not in your graded deck."
+                message = "Saved privately for phrase validation. With the optional provider configured, submit the same phrase again to validate it. Phrases need more than three words and strictly more than 80% mastered vocabulary."
                 db.execute("INSERT OR IGNORE INTO pending VALUES (?,?,?)", (pending_id, text, message))
                 return {"pending": True, "id": pending_id, "message": message}
             row = db.execute("SELECT * FROM dictionary WHERE id=?", (values.get("id"),)).fetchone()

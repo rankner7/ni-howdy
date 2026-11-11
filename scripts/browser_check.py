@@ -172,11 +172,21 @@ def run():
                 page.wait_for_selector('.feedback.success')
 
                 phrase='phrase:我也要喝茶。'
+                # Keep this IME fixture deterministic; generation itself is
+                # exercised by the phrase engine tests with diverse inventories.
+                from nihowdy.content import starter_items
+                with store.db() as db:
+                    item=next(i for i in starter_items() if i['id']==phrase)
+                    db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(phrase,json.dumps(item,ensure_ascii=False)))
                 configure(phrase,'phrases',2)
                 with store.db() as db:
-                    for word,mode in [('我','flashcards'),('也','drawing'),('要','flashcards'),('喝','drawing')]:
+                    for word,mode in [('我','flashcards'),('也','drawing'),('要','flashcards'),('喝','drawing'),('茶','flashcards')]:
                         store._enroll(db,word)
                         db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(word,mode))
+                    # A recovered hard prompt stays selected while the generator
+                    # fills the surrounding queue with easier new sentences.
+                    db.execute("INSERT INTO prompts(id,session_id,item_id,mode,level,payload) VALUES ('browser-phrase',?,?,'phrases',2,'{}')",
+                               (store._session(db),phrase))
                 navigate('phrases')
                 page.wait_for_selector('#pinyin-input')
                 for pinyin,char in [('wo','我'),('ye','也'),('yao','要'),('he','喝'),('cha','茶')]:
@@ -188,6 +198,14 @@ def run():
                 page.get_by_role('button',name='Check answer').click()
                 page.wait_for_selector('.feedback.success')
 
+                navigate('library')
+                state=page.request.get(base+'/api/state').json()
+                assert all(i['kind']=='word' for i in state['items'])
+                assert not any(r['mode']=='phrases' for r in state['recent'])
+                assert page.locator('#kind-filter').count()==0
+                assert '我也要喝茶' not in page.locator('#main').inner_text()
+                navigate('mastered')
+                assert '我也要喝茶' not in page.locator('#main').inner_text()
                 navigate('library')
                 # Explicit requests for compounds wait for all meaningful parts.
                 page.get_by_role('button',name='Add an example').click()

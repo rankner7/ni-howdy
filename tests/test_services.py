@@ -37,16 +37,50 @@ class ServiceTests(unittest.TestCase):
         pending=self.store.add({'text':'I would like tea.'})
         with patch.object(service,'generate',return_value={'valid':True,'text':'我要茶。','english':'I want tea.','tokens':['not-a-known-word']}):
             with self.assertRaises(ValueError):service.validate_pending(pending['id'])
-        self.assertEqual(len(self.store.state()['pending']),1)
+        self.assertEqual(self.store.state()['pending_count'],1)
 
     def test_validated_phrase_preserves_coverage_gate(self):
         service=ContentService(self.store)
+        pending=self.store.add({'text':'I also want to drink tea.'})
+        result={'valid':True,'text':'我也要喝茶。','english':'I also want to drink tea.',
+                'tokens':['我','也','要','喝','茶'],'explanation':'Subject + also + want + action.'}
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review' WHERE mode='flashcards' AND item_id IN ('我','也','要','喝')")
+        with patch.object(service,'generate',return_value=result):
+            with self.assertRaisesRegex(ValueError,'more than 80%'):service.validate_pending(pending['id'])
+            self.assertEqual(self.store.state()['pending_count'],1)
+            with self.store.db() as db:
+                db.execute("UPDATE progress SET status='review' WHERE item_id='茶' AND mode='drawing'")
+            self.assertTrue(service.validate_pending(pending['id'])['added'])
+        self.assertEqual(self.store.state()['pending_count'],0)
+        self.assertFalse(any(i['kind']=='phrase' for i in self.store.state()['items']))
+
+    def test_short_custom_phrase_stays_pending_even_when_all_known(self):
+        service=ContentService(self.store)
         pending=self.store.add({'text':'I want tea.'})
-        with patch.object(service,'generate',return_value={'valid':True,'text':'我要茶。','english':'I want tea.','tokens':['我','要','茶'],'explanation':'Subject + want + object.'}):
-            service.validate_pending(pending['id'])
-        entry=next(i for i in self.store.state()['items'] if i['id']=='phrase:我要茶。')
-        self.assertEqual(entry['coverage'],0)
-        self.assertTrue(self.store.next_prompt('phrases')['empty'])
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review' WHERE mode='flashcards'")
+        with patch.object(service,'generate',return_value={'valid':True,'text':'我要茶。','english':'I want tea.','tokens':['我','要','茶']}):
+            with self.assertRaisesRegex(ValueError,'more than three words'):service.validate_pending(pending['id'])
+        self.assertEqual(self.store.state()['pending_count'],1)
+
+    def test_custom_punctuation_variant_does_not_reset_mastery(self):
+        service=ContentService(self.store)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review' WHERE mode='flashcards' AND item_id IN ('我','要','喝','茶')")
+        result={'valid':True,'text':'我要喝茶。','english':'I want to drink tea.',
+                'tokens':['我','要','喝','茶'],'explanation':'Subject + want + action + object.'}
+        pending=self.store.add({'text':'I want to drink tea.'})
+        with patch.object(service,'generate',return_value=result):
+            self.assertTrue(service.validate_pending(pending['id'])['added'])
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='mastered',level=2 WHERE item_id='phrase:我要喝茶。'")
+        pending=self.store.add({'text':'I want to drink tea!'})
+        with patch.object(service,'generate',return_value=dict(result,text='我要喝茶！')):
+            self.assertFalse(service.validate_pending(pending['id'])['added'])
+        with self.store.db() as db:
+            self.assertEqual(len(self.store._phrase_history(db)),1)
+            self.assertEqual(db.execute("SELECT status FROM progress WHERE item_id='phrase:我要喝茶。'").fetchone()[0],'mastered')
 
     def test_basic_feedback_does_not_change_grading(self):
         checker=Proofreader(self.store)
