@@ -4,6 +4,7 @@ Run: .venv/bin/python scripts/browser_check.py
 """
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -61,6 +62,9 @@ def run():
                     with store.db() as db:
                         db.execute('DELETE FROM progress')
                         store._enroll(db,word)
+                        # Admission is tested through the library flow below;
+                        # isolate each practice mode with an already-admitted item.
+                        db.execute('INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,?,?)',(word,mode,level))
                         db.execute('DELETE FROM progress WHERE mode!=?',(mode,))
                         db.execute('UPDATE progress SET level=?,status=\'active\'',(level,))
                         db.execute('UPDATE prompts SET finished=1')
@@ -185,6 +189,30 @@ def run():
                 page.wait_for_selector('.feedback.success')
 
                 navigate('library')
+                # Explicit requests for compounds wait for all meaningful parts.
+                page.get_by_role('button',name='Add an example').click()
+                page.locator('#entry-search').fill('毛衣')
+                page.wait_for_selector('.add-result')
+                page.locator('.add-result').first.click()
+                page.locator('.add-result').filter(has_text='Waiting for prerequisites').first.wait_for()
+                page.get_by_role('button',name='Close dialog').click()
+                navigate('library')
+                sweater=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$')))
+                assert 'Waiting to join your deck' in sweater.inner_text()
+                sweater.get_by_role('button',name='Add prerequisite words').click()
+                page.wait_for_timeout(250)
+                assert page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$'))).get_by_role('button',name='Waiting for prerequisites').is_disabled()
+                with store.db() as db:
+                    for row in db.execute('SELECT id,data FROM items').fetchall():
+                        item=json.loads(row['data'])
+                        if item['text'] in ['毛','衣']:
+                            mode='flashcards' if item['text']=='毛' else 'drawing'
+                            db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(row['id'],mode))
+                navigate('library')
+                sweater=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$')))
+                assert sweater.locator('.word-progress>span').count()==2
+                assert sweater.locator('.word-prerequisites').count()==0
+
                 page.get_by_role('button',name='Add an example').click()
                 page.locator('#entry-search').fill('coffee')
                 page.wait_for_selector('.add-result')

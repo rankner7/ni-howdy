@@ -118,6 +118,8 @@ class Handler(BaseHTTPRequestHandler):
                         self.server.content.explain(result["item"]["id"])
                     except Exception:
                         result["message"] += " Explanation generation is pending; retry from the library."
+            elif path == '/api/add-prerequisites':
+                result=store.add_prerequisites(body.get('id'))
             elif path == "/api/explain":
                 result = self.server.content.explain(body.get("id"))
             elif path == "/api/validate":
