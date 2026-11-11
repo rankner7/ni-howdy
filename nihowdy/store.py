@@ -118,14 +118,18 @@ class Store:
     def _today(self, db):
         return self.now().astimezone(ZoneInfo(self._settings(db)["timezone"])).date().isoformat()
 
-    def _items(self, db):
-        return {r["id"]: json.loads(r["data"]) for r in db.execute("SELECT * FROM items")}
+    def _items(self, db, include_deleted=False):
+        items={r['id']:json.loads(r['data']) for r in db.execute('SELECT * FROM items')}
+        return items if include_deleted else {key:item for key,item in items.items() if not item.get('deleted')}
 
-    def _item(self, db, item_id):
+    def _item(self, db, item_id, include_deleted=False):
         row = db.execute("SELECT data FROM items WHERE id=?", (item_id,)).fetchone()
         if not row:
             raise ValueError("This entry no longer exists.")
-        return json.loads(row["data"])
+        item=json.loads(row['data'])
+        if item.get('deleted') and not include_deleted:
+            raise ValueError('This entry was deleted from your library. Restore it through Add example if you want to practise it again.')
+        return item
 
     def lowest(self, item, mode):
         return 1 if mode == "drawing" and not any(component_groups(c, self.hanzi) for c in item["text"]) else 0
@@ -149,7 +153,7 @@ class Store:
         return True
 
     def _lexeme(self, db, text, pinyin):
-        for row in db.execute("SELECT data FROM items WHERE json_extract(data,'$.text')=? AND json_extract(data,'$.kind')='word'",(text,)):
+        for row in db.execute("SELECT data FROM items WHERE json_extract(data,'$.text')=? AND json_extract(data,'$.kind')='word' AND COALESCE(json_extract(data,'$.deleted'),0)=0",(text,)):
             item=json.loads(row[0])
             if reading_key(item['pinyin'])==reading_key(pinyin):
                 return dict(text=text,pinyin=item['pinyin'],english=item['english'],id=item['id'])
@@ -238,6 +242,8 @@ class Store:
                       explanation_origin="Generated locally from a constrained grammar template",
                       sources=item["sources"])
         db.execute("INSERT OR IGNORE INTO items VALUES (?,?)", (phrase["id"], encode(phrase)))
+        if self._item(db,phrase['id'],include_deleted=True).get('deleted'):
+            return
         self._enroll(db, phrase["id"], after)
 
     def _mastered(self, db):
@@ -274,13 +280,18 @@ class Store:
             session = self._session(db)
             for row in db.execute("SELECT item_id,added FROM expansions").fetchall():
                 if len(json.loads(row["added"])) < 2:
-                    self._fill_expansion(db, self._item(db, row["item_id"]), session, json.loads(row["added"]))
+                    source=self._item(db,row['item_id'],include_deleted=True)
+                    if not source.get('deleted'):
+                        self._fill_expansion(db,source,session,json.loads(row['added']),include_deleted=False)
             items = self._items(db)
+            all_items=self._items(db,include_deleted=True)
+            removed=set(all_items)-set(items)
             progress = [dict(r) for r in db.execute("SELECT * FROM progress")]
             enrolled = {p["item_id"] for p in progress}
             for item in items.values():
                 item["enrolled"] = item["id"] in enrolled
                 item["progress"] = [p for p in progress if p["item_id"] == item["id"]]
+                item['can_delete']=bool((item['enrolled'] or item.get('requested')) and not any(p['status'] in ('mastered','review') for p in item['progress']))
                 if item['kind']=='word':
                     item['frequency_count']=self.vocabulary.addition_weight(item['text'])
                     item['missing_prerequisites']=[] if item['enrolled'] else self._missing_prerequisites(db,item)
@@ -288,6 +299,7 @@ class Store:
                 if item["kind"] == "phrase":
                     item["coverage"] = phrase_coverage(item["tokens"], mastered)
                     item["missing"] = [t for t in dict.fromkeys(item["tokens"]) if t not in mastered]
+                    item['removed_tokens']=[all_items[t]['text'] for t in item['tokens'] if t in removed]
             count = db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
             correct = db.execute("SELECT COUNT(*) FROM attempts WHERE correct=1").fetchone()[0]
             recent = [dict(r) for r in db.execute("SELECT * FROM attempts ORDER BY id DESC LIMIT 8")]
@@ -295,6 +307,7 @@ class Store:
             unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
                           for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
             return {"settings": self._settings(db), "items": list(items.values()), "session": session,
+                    'corpus_forms':len(self.vocabulary.counts),
                     "stats": {"attempts": count, "correct": correct, "mastered": len(mastered),
                               "reviews": sum(p["status"] == "review" for p in progress),
                               "active": sum(p["status"] == "active" for p in progress)},
@@ -364,10 +377,11 @@ class Store:
             if outstanding:
                 return self._public_prompt(db, outstanding)
             mastered = self._mastered(db)
+            removed={key for key,item in self._items(db,include_deleted=True).items() if item.get('deleted')}
             candidates = []
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered' AND eligible_after<?", (mode, session)):
                 item = self._item(db, row["item_id"])
-                if mode == "phrases" and phrase_coverage(item["tokens"], mastered) < .8:
+                if mode == "phrases" and (phrase_coverage(item["tokens"], mastered) < .8 or removed.intersection(item['tokens'])):
                     continue
                 candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode))))
             previous = db.execute("SELECT item_id FROM prompts WHERE session_id=? AND mode=? ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
@@ -412,6 +426,9 @@ class Store:
         row = db.execute("SELECT p.* FROM prompts p JOIN sessions s ON s.id=p.session_id WHERE p.id=? AND s.active=1", (prompt_id,)).fetchone()
         if not row:
             raise ValueError("This practice session has ended. Start a new prompt.")
+        if json.loads(row['payload']).get('cancelled'):
+            raise ValueError('This prompt was retired because vocabulary was deleted. Load the next prompt to continue.')
+        self._item(db,row['item_id'])
         return row
 
     def _expand(self, db, item, session):
@@ -423,11 +440,17 @@ class Store:
         db.execute("INSERT INTO expansions VALUES (?, '[]')", (item["id"],))
         return self._fill_expansion(db, item, session, [])
 
-    def _fill_expansion(self, db, item, session, existing):
+    def _fill_expansion(self, db, item, session, existing, include_deleted=True):
+        added=self._select_entries(db,item,2-len(existing),session,include_deleted=include_deleted)
+        db.execute('UPDATE expansions SET added=? WHERE item_id=?',(encode(existing+[i['id'] for i in added]),item['id']))
+        return [i['text'] for i in added]
+
+    def _candidate_pool(self, db, item, include_deleted=True):
         enrolled = {r[0] for r in db.execute("SELECT DISTINCT item_id FROM progress")}
         enrolled_forms={self._item(db,item_id)['text'] for item_id in enrolled}
-        candidates = [i for i in self._items(db).values() if i["kind"] == "word" and
-                      ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["id"] in i.get("related_to", [])) and i['text'] not in enrolled_forms and
+        terms=self._neighbor_terms(item)
+        candidates = [i for i in self._items(db,include_deleted=include_deleted).values() if i["kind"] == "word" and
+                      ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["id"] in i.get("related_to", []) or self._related_meaning(i['answers'],terms)) and i['text'] not in enrolled_forms and
                       self.vocabulary.addition_weight(i['text'])>0 and
                       all(c in self.hanzi for c in i["text"]) and not self._missing_prerequisites(db,i)]
         candidates.extend(self._dictionary_neighbors(db, item, enrolled | {i["id"] for i in candidates}))
@@ -435,26 +458,69 @@ class Store:
         for entry in candidates:
             if entry['text'] not in enrolled_forms:
                 unique.setdefault(entry['text'],entry)
-        added=weighted_sample([(entry,self.vocabulary.addition_weight(entry['text'])) for entry in unique.values()],2-len(existing),self.rng)
-        for entry in added:
-            db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(entry['id'],encode(entry)))
-            self._enroll(db, entry["id"], after=session)
-        db.execute("UPDATE expansions SET added=? WHERE item_id=?", (encode(existing+[i["id"] for i in added]), item["id"]))
-        return [i["text"] for i in added]
+        return list(unique.values())
 
-    def _dictionary_neighbors(self, db, item, exclude):
-        """Prepare contextual candidates locally when the curated topic pool runs low."""
-        terms = {
+    def _select_entries(self, db, source, count, after, include_deleted=True):
+        candidates=self._candidate_pool(db,source,include_deleted=include_deleted)
+        selected=weighted_sample([(entry,self.vocabulary.addition_weight(entry['text'])) for entry in candidates],count,self.rng)
+        added=[]
+        for entry in selected:
+            db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(entry['id'],encode(entry)))
+            if entry.get('deleted'):
+                entry=self._restore_item(db,entry['id'])
+            self._enroll(db,entry['id'],after=after)
+            db.execute('UPDATE progress SET eligible_after=MAX(eligible_after,?) WHERE item_id=?',(after,entry['id']))
+            added.append(entry)
+        return added
+
+    def generate_entries(self, values):
+        count=values.get('count',2)
+        if type(count) is not int or not 1<=count<=20:
+            raise ValueError('Choose between 1 and 20 new entries.')
+        with self.db() as db:
+            self._reviews(db)
+            self._activate_waiting(db)
+            if values.get('source')=='word':
+                source=self._item(db,values.get('id'))
+                if source['kind']!='word' or source['id'] not in self._mastered(db):
+                    raise ValueError('Choose an existing word mastered in flashcards or drawing.')
+            elif values.get('source')=='category':
+                category=values.get('category','')
+                if not isinstance(category,str) or not category.strip() or len(category)>80:
+                    raise ValueError('Choose a category or enter a short category name.')
+                category=category.strip().lower()
+                if not re.search('[a-z]',category):
+                    raise ValueError('Use an English category name so the local dictionary can match its meanings.')
+                source=dict(id='category:'+category,topic=category,english=category,kind='word')
+            else:
+                raise ValueError('Generate from a mastered word or a category.')
+            added=self._select_entries(db,source,count,self._session(db))
+            return {'items':added,'requested':count,'added':len(added),
+                    'message':f"Added {len(added)} new entries for your next practice session." if added else
+                              'No eligible new entries were found. Try another category or master more prerequisite words.'}
+
+    def _neighbor_terms(self, item):
+        return {
             "clothing":["shirt","sweater","socks","jacket","clothing","shoes"],
             "technology":["computer","keyboard","telephone","software","printer"],
             "food":["tea","coffee","milk","fruit","bread","rice"],
             "travel":["train","bus","ticket","station","transport"],
             "people":["student","teacher","school","friend","family"],
             "essentials":["person","good","small","big"],
-        }.get(item["topic"], [w for w in re.findall(r"[a-z]+",item["english"].lower()) if len(w)>3][:2])
+        }.get(item["topic"], [w[:-3]+'y' if w.endswith('ies') else w[:-1] if w.endswith('s') and not w.endswith('ss') else w
+                             for w in re.findall(r"[a-z]+",item["english"].lower()) if len(w)>=3 and w not in {'the','and','for','with','from','that','this'}][:3])
+
+    def _related_meaning(self, meanings, terms):
+        return next((sense for sense in meanings if any(
+            re.search(r'\b'+re.escape(term)+(r'\b' if term in {'good','big','small'} else r's?\b'),sense,re.I)
+            for term in terms)),None)
+
+    def _dictionary_neighbors(self, db, item, exclude):
+        """Prepare contextual candidates locally from the complete matching pool."""
+        terms=self._neighbor_terms(item)
         if not terms:
             return []
-        existing_forms = {i["text"] for i in self._items(db).values()}
+        existing_forms = {i["text"] for i in self._items(db,include_deleted=True).values()}
         cache_key=tuple(terms)
         if cache_key not in self._neighbor_cache:
             self._neighbor_cache[cache_key]=[dict(row) for row in db.execute("SELECT * FROM dictionary WHERE length(traditional)<=4 AND (" +
@@ -466,8 +532,7 @@ class Store:
             if form in existing_forms or not self.vocabulary.addition_weight(form) or not all(c in self.hanzi for c in form):
                 continue
             meanings=json.loads(row["meanings"])
-            sense=next((s for s in meanings if len(s)<=40 and s[:1].islower() and not re.search(r"[()\[\];]",s) and
-                        any(re.search(r"\b"+re.escape(t)+(r"\b" if t in {'good','big','small'} else r"s?\b"),s) for t in terms)),None)
+            sense=self._related_meaning([s for s in meanings if len(s)<=40 and s[:1].islower() and not re.search(r'[()\[\];]',s)],terms)
             if not sense:
                 continue
             entry=dict(id=form+":"+hashlib.sha256((row["pinyin"]+sense).encode()).hexdigest()[:8],
@@ -572,12 +637,66 @@ class Store:
         with self.db() as db:
             return self._item(db, item_id)
 
+    def _entry_ids(self, values):
+        if not isinstance(values,list) or not values or len(values)>100 or any(not isinstance(v,str) for v in values):
+            raise ValueError('Choose between 1 and 100 library entries.')
+        return list(dict.fromkeys(values))
+
+    def delete_entries(self, item_ids):
+        item_ids=self._entry_ids(item_ids)
+        with self.db() as db:
+            entries=[]
+            for item_id in item_ids:
+                item=self._item(db,item_id)
+                progress=[dict(row) for row in db.execute('SELECT * FROM progress WHERE item_id=?',(item_id,))]
+                if any(p['status'] in ('mastered','review') for p in progress):
+                    raise ValueError('Mastered entries cannot be deleted. Remove only unmastered vocabulary.')
+                if not progress and not item.get('requested'):
+                    raise ValueError('Choose entries that are already in your library or waiting to join it.')
+                entries.append((item,progress))
+            affected=set(item_ids)
+            for candidate in self._items(db).values():
+                if candidate['kind']=='phrase' and affected.intersection(candidate['tokens']):
+                    affected.add(candidate['id'])
+            for item,progress in entries:
+                item['deleted_state']={'progress':progress,'requested':bool(item.get('requested'))}
+                item.update(deleted=True,requested=False)
+                db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item['id']))
+                db.execute('DELETE FROM progress WHERE item_id=?',(item['id'],))
+            for item_id in affected:
+                db.execute("UPDATE prompts SET finished=1,payload=json_set(payload,'$.cancelled',1) WHERE item_id=? AND finished=0",(item_id,))
+            self._parts_cache.clear()
+            return {'deleted':item_ids,'message':f"Deleted {len(item_ids)} unmastered {'entry' if len(item_ids)==1 else 'entries'} from your library."}
+
+    def _restore_item(self, db, item_id):
+        item=self._item(db,item_id,include_deleted=True)
+        if not item.get('deleted'):
+            return item
+        saved=item.pop('deleted_state',{})
+        item.pop('deleted',None)
+        item['requested']=bool(saved.get('requested'))
+        db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item_id))
+        columns=[row[1] for row in db.execute('PRAGMA table_info(progress)')]
+        for progress in saved.get('progress',[]):
+            if progress.get('item_id')!=item_id or progress.get('mode') not in LEVELS:
+                raise ValueError('Saved entry progress is invalid.')
+            db.execute('INSERT OR IGNORE INTO progress('+','.join(columns)+') VALUES ('+','.join('?' for _ in columns)+')',[progress[c] for c in columns])
+        self._parts_cache.clear()
+        return item
+
+    def restore_entries(self, item_ids):
+        item_ids=self._entry_ids(item_ids)
+        with self.db() as db:
+            for item_id in item_ids:
+                self._restore_item(db,item_id)
+            return {'restored':item_ids,'message':f'Restored {len(item_ids)} library entries.'}
+
     def search(self, query):
         query = query.strip()[:100]
         if not query:
             return []
         with self.db() as db:
-            known = [dict(i, source="catalog") for i in self._items(db).values() if query.casefold() in
+            known = [dict(i, source="catalog") for i in self._items(db,include_deleted=True).values() if query.casefold() in
                      (i["text"]+" "+i["english"]+" "+plain_pinyin(i["pinyin"])).casefold()]
             # Literal LIKE escaping avoids wildcards expanding a user query.
             pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -613,7 +732,7 @@ class Store:
     def add(self, values):
         with self.db() as db:
             if values.get("source") == "catalog":
-                item = self._item(db, values["id"])
+                item = self._restore_item(db,values['id'])
                 enrolled=self._enroll(db, item["id"])
                 return self._addition_result(db,item,enrolled)
             if values.get("source") != "dictionary":
@@ -636,9 +755,9 @@ class Store:
             return self._addition_result(db,item,enrolled)
 
     def _dictionary_item(self, db, row, sense):
-        for existing in self._items(db).values():
+        for existing in self._items(db,include_deleted=True).values():
             if existing['text']==row['traditional'] and reading_key(existing['pinyin'])==reading_key(row['pinyin']) and correct_answer(sense,existing['answers']):
-                return existing
+                return self._restore_item(db,existing['id'])
         form=row['traditional']
         if not all(c in self.hanzi for c in form):
             raise ValueError('This entry has characters outside the local drawing dataset. Choose another entry for now.')

@@ -120,6 +120,12 @@ class Handler(BaseHTTPRequestHandler):
                         result["message"] += " Explanation generation is pending; retry from the library."
             elif path == '/api/add-prerequisites':
                 result=store.add_prerequisites(body.get('id'))
+            elif path == '/api/delete-entries':
+                result=store.delete_entries(body.get('ids'))
+            elif path == '/api/restore-entries':
+                result=store.restore_entries(body.get('ids'))
+            elif path == '/api/generate-entries':
+                result=store.generate_entries(body)
             elif path == "/api/explain":
                 result = self.server.content.explain(body.get("id"))
             elif path == "/api/validate":
