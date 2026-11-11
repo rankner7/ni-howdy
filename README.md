@@ -33,14 +33,14 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 - Passing the hardest level moves that skill into the mastered bin. Each unchecked local calendar day gets one independent 5% review trial. A returning item appears at its hardest level. Reloads never reroll checked dates.
 - Opening the information icon immediately records one incorrect attempt. You may finish for feedback, but the prompt cannot then advance you. Reopening the explanation and resubmitting cannot count additional failures.
 - Selection is random, weighted toward lower difficulties and unseen items. Base weights halve at each level; unseen items receive 2× weight, and repeated lowest-level failure blocks receive up to a 4× recovery boost.
-- First mastery in either flashcards or drawing selects two contextual neighbours, adds them to both decks, and makes them eligible next session. Related vocabulary comes from topic tags and the local dictionary; unfinished expansions remain pending if there are too few supported candidates.
+- First mastery in either flashcards or drawing selects up to two contextual neighbours, with odds proportional to their observed frequency in Taiwan written text and news. Unattested words are excluded from automatic additions. Each new compound requires mastery of all meaningful parts before it enters either deck. Selected words become eligible next session; unfinished expansions remain pending.
 - Phrase practice requires at least 80% of its vocabulary tokens to be mastered in either flashcards or drawing. Function words count, punctuation does not. The library shows prerequisites and can add them to the deck. Pending hard reviews still count as mastered until demotion.
 
 English answers match a stored list of legitimate translations. Case and surrounding whitespace are ignored; punctuation and spelling remain significant. Articles are accepted only when explicitly included in the answer list. Spelling and basic grammar feedback appears before submission without editing your answer or changing grading.
 
 ## Personal vocabulary and explanations
 
-Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. Supported words join both vocabulary modes. Suitable nouns also receive locally generated phrase templates; the 80% rule still controls when those phrases appear.
+Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. Supported words join both vocabulary modes once their meaningful parts are mastered. A requested compound waits in the library with its prerequisites and unlocks automatically when ready. Suitable nouns also receive locally generated phrase templates; the 80% rule still controls when those phrases appear.
 
 Starter entries include cached explanations, character construction, related vocabulary examples, and source links. New dictionary entries receive source-backed construction notes. A fuller LLM explanation can be generated once and stored when an optional provider is configured. Entirely novel phrases stay pending until validation; they never silently enter graded practice.
 
@@ -76,7 +76,7 @@ Without it, the app uses its local spelling lexicon and basic grammar rules. No 
 - Local phrase generation currently uses constrained sentence templates. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
 - Backup/restore includes library, settings, sessions, and history. It replaces the local database contents after confirmation; it does not copy voice binaries or generated audio.
 
-See [PLAN.md](PLAN.md) for the detailed specification and [data/README.md](data/README.md) for sources, attribution, and data licenses.
+See [PLAN.md](PLAN.md) for the detailed specification, [docs/vocabulary.md](docs/vocabulary.md) for addition weights and compound prerequisites, and [data/README.md](data/README.md) for sources, attribution, and data licenses.
 
 To prepare or refresh character recordings separately after updating dependencies:
 
