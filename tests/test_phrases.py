@@ -62,6 +62,32 @@ class PhraseEngineTests(unittest.TestCase):
         self.items['喝']['pinyin'] = 'hè'  # A different reading/sense must not fill drink.
         self.assertEqual(self.generated(), [])
 
+    def test_identity_possession_and_preferences_without_action_mastery(self):
+        self.master('我', '你', '是', '有', '也', '好', '人', '喜歡', '水', '茶', '蛋', '電腦')
+        phrases = {p['text']: p for p in self.generated()}
+        self.assertEqual(phrases['我是好人。']['english'], 'I am a good person.')
+        self.assertEqual(phrases['你喜歡好人。']['english'], 'You like good people.')
+        self.assertEqual(phrases['我有水，也有茶。']['english'], 'I have water and tea.')
+        self.assertEqual(phrases['我喜歡水，也喜歡茶。']['english'], 'I like water and tea.')
+        self.assertEqual(phrases['我有水，你有茶。']['english'], 'I have water, and you have tea.')
+        self.assertEqual(phrases['我有茶，你也有茶。']['english'], 'I have tea, and you have tea too.')
+        self.assertIn('我也有電腦。', phrases)
+        self.assertNotIn('我是人。', phrases)  # Still requires more than three words.
+        self.assertNotIn('我有蛋，也有電腦。', phrases)  # Related object groups only.
+        self.assertFalse(any('有好人' in text or '有學生' in text for text in phrases))
+        self.assertTrue(all(eligible(p['tokens'], self.mastered) for p in phrases.values()))
+
+    def test_descriptions_and_social_roles(self):
+        self.extra('很', 'hěn', 'very')
+        self.extra('的', 'de', 'possessive particle')
+        self.master('我', '他', '也', '是', '有', '好', '學生', '老師', '朋友', '電腦', '蘋果', '大', '小', '的', '很')
+        phrases = {p['text']: p for p in self.generated()}
+        self.assertEqual(phrases['他是好學生。']['english'], 'He is a good student.')
+        self.assertEqual(phrases['他有好朋友。']['english'], 'He has a good friend.')
+        self.assertEqual(phrases['他的電腦很大。']['english'], 'His computer is big.')
+        self.assertEqual(phrases['我的蘋果很小。']['english'], 'My apple is small.')
+        self.assertFalse(any('是大人' in text or '是小人' in text for text in phrases))
+
 
 
 if __name__ == '__main__':

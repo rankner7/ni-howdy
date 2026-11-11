@@ -17,7 +17,7 @@ from .content import (component_groups, construction, dictionary_rows, infer_top
                       plain_pinyin, sources_for, starter_items)
 from .learning import (LEVELS, correct_answer, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
-from .phrases import candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
+from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
 from .vocabulary import VocabularyPolicy, reading_key
 
 
@@ -257,7 +257,7 @@ class Store:
             if key in possible or custom:
                 options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
         if generate:
-            active = sum(items[item_id].get('phrase_engine') == 'local-v2' and
+            active = sum(items[item_id].get('phrase_engine') == ENGINE_VERSION and
                          history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'
                          for item_id in options)
             groups = {}

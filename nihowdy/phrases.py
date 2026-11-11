@@ -8,6 +8,8 @@ from itertools import combinations
 
 from .vocabulary import reading_key
 
+ENGINE_VERSION = 'local-v3'
+
 
 def phrase_key(text):
     """Punctuation/spacing variants are the same sentence for generation history."""
@@ -59,11 +61,22 @@ PLACES = {
 SUBJECTS = {'我': ('wǒ', 'I'), '你': ('nǐ', 'You'), '他': ('tā', 'He'),
             '她': ('tā', 'She'), '我們': ('wǒ men', 'We'), '你們': ('nǐ men', 'You'),
             '他們': ('tā men', 'They')}
+ROLES = {'人': ('rén', 'person'), '學生': ('xué shēng', 'student'),
+         '老師': ('lǎo shī', 'teacher'), '朋友': ('péng yǒu', 'friend')}
+DEVICES = {text: GOODS[text] for text in ('電腦', '手機', '電話', '電視', '鍵盤', '滑鼠')}
+# Keep coordinated objects in the same semantic group. In particular, avoid
+# treating a person as a possession or using a literal 大人/小人 as big/small person.
+OBJECT_GROUPS = (DRINKS, FOODS, CLOTHES, BOOKS, DEVICES)
+SIZED = {text: GOODS[text] for text in ('電腦', '手機', '電話', '電視', '鍵盤', '滑鼠',
+                                      '書', '毛衣', '襯衫', '外套', '蘋果', '蛋')}
+SIZED.update({'蘋果': ('píng guǒ', 'an apple'), '蛋': ('dàn', 'an egg')})
+ADJECTIVES = {'大': ('dà', 'big'), '小': ('xiǎo', 'small')}
 FUNCTIONS = {
     '要': ('yào', 'want'), '想': ('xiǎng', 'want'), '喜歡': ('xǐ huān', 'like'),
     '可以': ('kě yǐ', 'can'), '也': ('yě', 'also'), '不': ('bù', 'not'),
     '嗎': ('ma', ''), '今天': ('jīn tiān', 'today'), '明天': ('míng tiān', 'tomorrow'),
     '在': ('zài', 'at'), '和': ('hé', 'and'),
+    '的': ('de', 'possessive particle'), '很': ('hěn', ''),
 }
 ACTIONS = [
     ('喝', 'hē', 'drink', 'drinking', DRINKS),
@@ -97,13 +110,14 @@ def candidates(items, mastered):
     places = slots(PLACES, known=True)
     seen = set()
 
-    def sentence(parts, english, family, explanation, question=False):
+    def sentence(parts, english, family, explanation, question=False, clause_at=None):
         if any(part is None for part in parts):
             return None
         tokens = [part['id'] for part in parts]
         if not eligible(tokens, mastered):
             return None
-        text = ''.join(part['text'] for part in parts) + ('？' if question else '。')
+        text = ''.join(('，' if index == clause_at else '') + part['text']
+                       for index, part in enumerate(parts)) + ('？' if question else '。')
         key = phrase_key(text)
         if key in seen:
             return None
@@ -115,10 +129,76 @@ def candidates(items, mastered):
                     topic=parts[-1]['topic'], region='TW', script='Hant', status='ready',
                     characters=[], explanation=explanation,
                     explanation_origin='Generated locally from a constrained grammar pattern',
-                    phrase_engine='local-v2', phrase_family=family, sources=list(sources.values()))
+                    phrase_engine=ENGINE_VERSION, phrase_family=family, sources=list(sources.values()))
 
     for subject, name in subjects:
         third = name in ('He', 'She')
+        be = 'am' if name == 'I' else 'is' if third else 'are'
+        is_word = resolve('是', 'shì', known=True)
+        have = resolve('有', 'yǒu', known=True)
+        like = functions['喜歡']
+        good = resolve('好', 'hǎo', known=True)
+        for role, noun in slots(ROLES, known=True):
+            yield sentence([subject, is_word, good, role], f'{name} {be} a good {noun}.',
+                           'identity', '是 identifies someone. 好 goes directly before a role noun: 好人 means a good person.')
+            yield sentence([subject, functions['也'], is_word, role],
+                           f'{name} {be} also a {noun}.', 'identity',
+                           'Subject + 也 + 是 + role. 也 connects this identity to the preceding context.')
+            yield sentence([subject, functions['不'], is_word, role],
+                           f'{name} {be} not a {noun}.', 'identity',
+                           '不 goes before 是 to negate an identity.')
+            yield sentence([subject, like, good, role],
+                           f"{name} {'likes' if third else 'like'} good {noun + 's' if noun != 'person' else 'people'}.",
+                           'preferences', '喜歡 can take a noun object directly. 好 modifies the following noun.')
+            if role['text'] in ('朋友', '老師'):
+                yield sentence([subject, have, good, role],
+                               f"{name} {'has' if third else 'have'} a good {noun}.", 'possession',
+                               '有 expresses having a relationship, such as a good friend or teacher.')
+
+        for group in OBJECT_GROUPS:
+            objects = slots(group, known=True)
+            for obj, noun in objects:
+                yield sentence([subject, functions['也'], have, obj],
+                               f"{name} also {'has' if third else 'have'} {noun}.", 'possession',
+                               'Subject + 也 + 有 + object. 有 expresses possession or availability.')
+                yield sentence([subject, functions['也'], like, obj],
+                               f"{name} also {'likes' if third else 'like'} {noun}.", 'preferences',
+                               '喜歡 takes a noun directly; a second action verb is not required.')
+                for other, other_name in subjects:
+                    if other['id'] == subject['id']:
+                        continue
+                    other_pronoun = 'I' if other_name == 'I' else other_name.lower()
+                    other_have = 'has' if other_name in ('He', 'She') else 'have'
+                    yield sentence([subject, have, obj, other, functions['也'], have, obj],
+                                   f"{name} {'has' if third else 'have'} {noun}, and {other_pronoun} {other_have} {noun} too.",
+                                   'shared-possession', 'Two clauses contrast their subjects. 也 in the second clause means too.', clause_at=3)
+            for (first, a), (second, b) in combinations(objects, 2):
+                yield sentence([subject, have, first, functions['也'], have, second],
+                               f"{name} {'has' if third else 'have'} {a} and {b}.", 'possession',
+                               'Two 有 clauses share a subject. 也 links the second thing the speaker has.', clause_at=3)
+                yield sentence([subject, like, first, functions['也'], like, second],
+                               f"{name} {'likes' if third else 'like'} {a} and {b}.", 'preferences',
+                               'Repeat 喜歡 to link two preferences; omit the repeated subject in the second clause.', clause_at=3)
+                for other, other_name in subjects:
+                    if other['id'] == subject['id']:
+                        continue
+                    other_pronoun = 'I' if other_name == 'I' else other_name.lower()
+                    for verb, singular, plural in ((have, 'has', 'have'), (like, 'likes', 'like')):
+                        yield sentence([subject, verb, first, other, verb, second],
+                                       f"{name} {singular if third else plural} {a}, and {other_pronoun} {singular if other_name in ('He', 'She') else plural} {b}.",
+                                       'comparison', 'Use two short clauses to compare what different people have or like.', clause_at=3)
+
+        possessive = {'I': 'My', 'You': 'Your', 'He': 'His', 'She': 'Her',
+                      'We': 'Our', 'They': 'Their'}[name]
+        for obj, noun in slots(SIZED, known=True):
+            bare_noun = noun.removeprefix('a ').removeprefix('an ')
+            for adjective, meaning in slots(ADJECTIVES, known=True):
+                yield sentence([subject, functions['的'], obj, functions['很'], adjective],
+                               f'{possessive} {bare_noun} is {meaning}.', 'description',
+                               'Possessor + 的 + noun identifies whose thing it is. 很 connects it to an adjective without 是; it need not mean very here.')
+                yield sentence([obj, functions['也'], functions['很'], adjective],
+                               f'The {bare_noun} is also {meaning}.', 'description',
+                               'Noun + 也 + 很 + adjective describes an additional thing. Do not insert 是 before the adjective.')
         for verb_text, reading, base, gerund, objects in ACTIONS:
             verb = resolve(verb_text, reading, known=True)
             if not verb:

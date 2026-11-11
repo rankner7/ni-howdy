@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from nihowdy.content import load_hanzi, starter_items
-from nihowdy.phrases import phrase_key
+from nihowdy.phrases import ENGINE_VERSION, phrase_key
 from nihowdy.store import Store, encode
 
 
@@ -85,10 +85,13 @@ class PhraseStoreTests(unittest.TestCase):
             for item in (short, bad):
                 db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
                 self.store._enroll(db, item['id'])
-        self.assertTrue(self.store.next_prompt('phrases')['empty'])
+        self.store.next_prompt('phrases')
         with self.store.db() as db:
             self.assertIn(short['id'], self.store._items(db))
             self.assertIn(bad['id'], self.store._items(db))
+            options = self.store._phrase_options(db)
+            self.assertNotIn(short['id'], options)
+            self.assertNotIn(bad['id'], options)
 
     def test_existing_legacy_backlog_does_not_block_diverse_generation(self):
         self.master('我', '你', '也', '要', '喝', '買', '喜歡', '去', '家',
@@ -96,13 +99,28 @@ class PhraseStoreTests(unittest.TestCase):
         with self.store.db() as db:
             for item in starter_items():
                 if item['kind'] == 'phrase':
+                    item['phrase_engine'] = 'local-v2'
                     db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
                     self.store._enroll(db, item['id'])
             options = self.store._phrase_options(db, generate=True)
-            fresh = [i for i in self.store._items(db).values() if i.get('phrase_engine') == 'local-v2']
+            fresh = [i for i in self.store._items(db).values() if i.get('phrase_engine') == ENGINE_VERSION]
             self.assertEqual(len(fresh), 8)
             self.assertGreaterEqual(len(set(options.values())), 3)
             self.assertIn('destinations', options.values())
+
+    def test_beginner_profile_gets_non_action_phrases_and_audio_without_scoring(self):
+        self.master('一', '三', '也', '二', '人', '你', '你好', '喜歡', '好', '我',
+                    '是', '有', '水', '茶', '蛋', '電腦')
+        prompt = self.store.next_prompt('phrases')
+        self.assertFalse(prompt.get('empty'))
+        before = self.store.state()['stats']['attempts']
+        item = self.store.audio_item(prompt['id'])
+        self.assertEqual(item['kind'], 'phrase')
+        self.assertTrue(item['pinyin'])
+        self.assertEqual(self.store.state()['stats']['attempts'], before)
+        with self.store.db() as db:
+            self.assertEqual(db.execute('SELECT hint,scored FROM prompts WHERE id=?', (prompt['id'],)).fetchone()[:], (0, 0))
+        self.assertFalse(any(i['kind'] == 'phrase' for i in self.store.state()['items']))
 
 
 if __name__ == '__main__':
