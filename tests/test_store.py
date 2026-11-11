@@ -1,4 +1,5 @@
 import random
+import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -25,6 +26,9 @@ class StoreTests(unittest.TestCase):
     def only(self, item='電腦', mode='flashcards', level=0):
         with self.store.db() as db:
             db.execute('DELETE FROM progress WHERE item_id != ? OR mode != ?', (item, mode))
+            # These tests isolate progression after a word has already entered a deck.
+            # New compound admission is exercised separately below.
+            db.execute('INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,?,?)',(item,mode,level))
             db.execute('UPDATE progress SET level=?', (level,))
 
     def test_hint_and_resubmission_score_once(self):
@@ -145,10 +149,13 @@ class StoreTests(unittest.TestCase):
                 if item['kind']=='word' and item['topic']=='food':
                     self.store._enroll(db,item['id'])
             db.execute("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES ('豆漿','豆浆','dòu jiāng','doujiang','[\"soy milk\"]')")
+            for text,pinyin in [('豆','dòu'),('漿','jiāng')]:
+                entry=dict(self.store._item(db,'茶'),id=text,text=text,pinyin=pinyin,english=text,answers=[text])
+                db.execute('INSERT INTO items VALUES (?,?)',(text,json.dumps(entry,ensure_ascii=False)))
+                db.execute("INSERT INTO progress(item_id,mode,level,status) VALUES (?,'flashcards',2,'review')",(text,))
             result=self.store._expand(db,self.store._item(db,'茶'),1)
             self.assertIn('豆漿',result)
             row=db.execute("SELECT added FROM expansions WHERE item_id='茶'").fetchone()
-            import json
             self.assertEqual(len(json.loads(row[0])),1)
             # An unfinished expansion persists instead of falsely claiming two additions.
         self.assertTrue(any(x['item_id']=='茶' and x['remaining']==1 for x in self.store.state()['pending_expansions']))

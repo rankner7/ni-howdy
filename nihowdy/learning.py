@@ -59,6 +59,17 @@ def weighted_choice(entries, rng):
     return entries[-1][0]
 
 
+def weighted_sample(entries, count, rng):
+    """Sample without replacement with odds proportional to positive weights."""
+    pool=[(value,w) for value,w in entries if w>0]
+    result=[]
+    for _ in range(min(count,len(pool))):
+        choice=weighted_choice(pool,rng)
+        result.append(choice)
+        pool=[(value,w) for value,w in pool if value!=choice]
+    return result
+
+
 def review_trials(checked_on, today, probability, rng):
     """One persisted trial per unexamined calendar day; stop on selection."""
     day = date.fromisoformat(checked_on) + timedelta(days=1)
