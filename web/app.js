@@ -50,31 +50,99 @@ function wordReadiness(item){
   return frequency+`<div class="notice word-prerequisites"><strong>${item.waiting?'Waiting to join your deck':'Learn its parts first'}</strong><p>${item.missing_prerequisites.map(p=>escape(p.text)+' · '+escape(p.english)).join('<br>')}</p><button class="text-button word-foundations" data-id="${escape(item.id)}">Add prerequisite words ＋</button></div>`;
 }
 
+function entryActions(item){
+  if(item.can_delete)return `<div class="library-entry-actions"><label><input type="checkbox" class="select-entry" data-id="${escape(item.id)}" aria-label="Select ${escape(item.text)} for deletion"> Select</label><button class="text-button delete-entry" data-id="${escape(item.id)}" aria-label="Delete ${escape(item.text)}">Delete</button></div>`;
+  if(item.kind==='word'&&item.progress.some(p=>['mastered','review'].includes(p.status)))return `<button class="text-button generate-related" data-id="${escape(item.id)}">Generate related entries ↗</button>`;
+  return '';
+}
+
 function library(page){
   const bin=page==='mastered';
+  const selected=new Set();
   $('#main').innerHTML=pageHeader(bin?'A LITTLE SPACE TO REST':'WORDS THAT MATTER',bin?'You’ve made these yours.':'Your growing word collection.',bin?`Mastered skills rest here. Each unchecked day has a ${state.settings.probability*100}% chance of bringing an item back.`:'Explore meanings, discover connections, and build your own vocabulary.','<button class="primary add-word">＋ Add an example</button>')+
     `<div class="library-toolbar"><div class="search-wrap"><span>⌕</span><input id="library-search" aria-label="Search your library" placeholder="Find a word, meaning, or pinyin…"></div><select id="kind-filter" aria-label="Filter by practice type"><option value="all">Words & phrases</option><option value="word">Words</option><option value="phrase">Phrases</option></select><select id="status-filter" aria-label="Filter by status">${bin?'<option value="mastered">Mastered & returning</option>':'<option value="enrolled">In my deck</option><option value="all">Discover all</option><option value="mastered">Mastered & returning</option>'}</select></div>
-    <div id="library-results"></div><div id="pending-list"></div>`;
+    <div class="library-selection" ${bin?'hidden':''}><label><input type="checkbox" id="select-visible"> Select visible unmastered entries</label><button class="secondary delete-selected" disabled>Delete selected (0)</button></div><div id="library-results"></div><div id="pending-list"></div>`;
   $('.add-word').onclick=addExample;
+  $('.page-actions').insertAdjacentHTML('afterbegin','<button class="secondary generate-entries">Generate entries ✧</button>');
+  $('.generate-entries').onclick=()=>generateEntries();
+  async function removeEntries(ids){
+    try{
+      const result=await api('delete-entries',{ids});
+      ids.forEach(id=>selected.delete(id));await refresh();
+      if($('#main').dataset.route===page)render();
+      toast(result.message,{label:'Undo',run:async()=>{await api('restore-entries',{ids:result.deleted});await route();}});
+    }catch(error){toast(error.message);}
+  }
+  function updateSelection(){
+    const button=$('.delete-selected');button.disabled=!selected.size;button.textContent=`Delete selected (${selected.size})`;
+    const checkboxes=$$('.select-entry');
+    $('#select-visible').checked=checkboxes.length>0&&checkboxes.every(c=>c.checked);
+    $('#select-visible').disabled=!checkboxes.length;
+  }
   function render(){
     const query=$('#library-search').value.toLowerCase();const kind=$('#kind-filter').value;const status=$('#status-filter').value;
     const items=state.items.filter(i=>(kind==='all'||i.kind===kind)&&(status==='all'||status==='enrolled'&&(i.enrolled||i.waiting)||status==='mastered'&&i.progress.some(p=>['mastered','review'].includes(p.status)))&&[i.text,i.pinyin,i.english].join(' ').toLowerCase().includes(query));
-    $('#library-results').innerHTML=`<p class="result-count">${items.length} ${items.length===1?'entry':'entries'} · progress is tracked separately for each skill</p><div class="library-grid">${items.map(i=>`<article class="word-card"><div class="word-card-heading"><span class="pill">${escape(i.topic)}</span><button class="icon-button word-info" data-id="${escape(i.id)}" aria-label="Read about ${escape(i.text)}">ⓘ</button></div><div class="word-glyph ${i.kind==='phrase'?'phrase-glyph':''}" lang="zh-Hant">${escape(i.text)}</div><p class="pinyin">${escape(i.pinyin)}</p><h3>${escape(i.english)}</h3><div class="word-progress">${i.progress.map(p=>`<span class="${p.status==='mastered'?'mastered':p.status==='review'?'review':''}">${p.mode==='drawing'?'✎ Drawing':p.mode==='phrases'?'☷ Phrases':'▣ Cards'} <b>${p.status==='mastered'?'✓ Mastered':p.status==='review'?'↻ Review':['Easy','Medium','Hard'][p.level-(p.mode==='drawing'?1:0)]||'Components'}</b></span>`).join('')}</div>${wordReadiness(i)}${i.kind==='phrase'?`<div class="coverage"><div><i style="width:${i.coverage*100}%"></i></div><small>${Math.round(i.coverage*100)}% known · ${i.coverage>=.8?'ready to practise':'80% needed'}</small>${i.coverage<.8?`<p>Learn first: ${i.missing.map(escape).join(' · ')}</p><button class="text-button learn-prerequisites" data-id="${escape(i.id)}">Add missing vocabulary ＋</button>`:''}</div>`:''}${!i.enrolled?`<button class="secondary full enroll" data-id="${escape(i.id)}" ${i.waiting?'disabled':''}>${i.waiting?'Waiting for prerequisites':i.missing_prerequisites?.length?'Queue until ready ＋':'Add to my deck ＋'}</button>`:''}</article>`).join('')}</div>${items.length?'':'<div class="empty-state"><span class="empty-symbol">✧</span><h2>Room for your next discovery.</h2><p>Master the hardest level of a skill to see it here, or adjust your filters.</p></div>'}`;
+    $('#library-results').innerHTML=`<p class="result-count">${items.length} ${items.length===1?'entry':'entries'} · progress is tracked separately for each skill</p><div class="library-grid">${items.map(i=>`<article class="word-card"><div class="word-card-heading"><span class="pill">${escape(i.topic)}</span><button class="icon-button word-info" data-id="${escape(i.id)}" aria-label="Read about ${escape(i.text)}">ⓘ</button></div><div class="word-glyph ${i.kind==='phrase'?'phrase-glyph':''}" lang="zh-Hant">${escape(i.text)}</div><p class="pinyin">${escape(i.pinyin)}</p><h3>${escape(i.english)}</h3><div class="word-progress">${i.progress.map(p=>`<span class="${p.status==='mastered'?'mastered':p.status==='review'?'review':''}">${p.mode==='drawing'?'✎ Drawing':p.mode==='phrases'?'☷ Phrases':'▣ Cards'} <b>${p.status==='mastered'?'✓ Mastered':p.status==='review'?'↻ Review':['Easy','Medium','Hard'][p.level-(p.mode==='drawing'?1:0)]||'Components'}</b></span>`).join('')}</div>${wordReadiness(i)}${i.kind==='phrase'?`<div class="coverage">${i.removed_tokens?.length?`<p>Restore first: ${i.removed_tokens.map(escape).join(' · ')}</p>`:''}<div><i style="width:${i.coverage*100}%"></i></div><small>${Math.round(i.coverage*100)}% known · ${i.removed_tokens?.length?'paused · deleted vocabulary':i.coverage>=.8?'ready to practise':'80% needed'}</small>${i.coverage<.8?`<p>Learn first: ${i.missing.map(escape).join(' · ')}</p><button class="text-button learn-prerequisites" data-id="${escape(i.id)}">Add missing vocabulary ＋</button>`:''}</div>`:''}${!i.enrolled?`<button class="secondary full enroll" data-id="${escape(i.id)}" ${i.waiting?'disabled':''}>${i.waiting?'Waiting for prerequisites':i.missing_prerequisites?.length?'Queue until ready ＋':'Add to my deck ＋'}</button>`:''}${entryActions(i)}</article>`).join('')}</div>${items.length?'':'<div class="empty-state"><span class="empty-symbol">✧</span><h2>Room for your next discovery.</h2><p>Master the hardest level of a skill to see it here, or adjust your filters.</p></div>'}`;
     $$('.word-foundations').forEach(b=>b.onclick=async()=>{try{const result=await api('add-prerequisites',{id:b.dataset.id});await refresh();render();toast(result.message);}catch(e){toast(e.message);}});
+    $$('.delete-entry').forEach(b=>b.onclick=()=>removeEntries([b.dataset.id]));
+    $$('.select-entry').forEach(box=>{box.checked=selected.has(box.dataset.id);box.onchange=()=>{if(box.checked){if(selected.size>=100){box.checked=false;toast('Select up to 100 entries at a time.');}else selected.add(box.dataset.id);}else selected.delete(box.dataset.id);updateSelection();};});
+    $$('.generate-related').forEach(b=>b.onclick=()=>generateEntries(b.dataset.id));
     $$('.word-info').forEach(b=>b.onclick=()=>showInfo(state.items.find(i=>i.id===b.dataset.id),{generate:state.services.llm}));
     $$('.enroll').forEach(b=>b.onclick=async()=>{try{const result=await api('add',{source:'catalog',id:b.dataset.id});await refresh();render();toast(result.message);}catch(e){toast(e.message);}});
     $$('.learn-prerequisites').forEach(b=>b.onclick=async()=>{try{for(const id of state.items.find(i=>i.id===b.dataset.id).missing)await api('add',{source:'catalog',id});await refresh();render();toast('Prerequisite words are in flashcards and drawing.');}catch(e){toast(e.message);}});
+    updateSelection();
   }
+  $('.delete-selected').onclick=()=>removeEntries([...selected]);
+  $('#select-visible').onchange=event=>{
+    const boxes=$$('.select-entry').slice(0,100);
+    boxes.forEach(box=>{box.checked=event.target.checked&&(selected.has(box.dataset.id)||selected.size<100);if(box.checked)selected.add(box.dataset.id);else selected.delete(box.dataset.id);});
+    updateSelection();
+  };
   $('#library-search').oninput=render;$('#kind-filter').onchange=render;$('#status-filter').onchange=render;render();
   if(state.pending.length){$('#pending-list').innerHTML=`<div class="section-heading"><h2>Waiting for validation</h2></div>${state.pending.map(p=>`<div class="pending-entry"><div><strong>${escape(p.text)}</strong><p>${escape(p.message)}</p></div><button class="secondary validate-pending" data-id="${escape(p.id)}">Validate pending</button></div>`).join('')}`;
     $$('.validate-pending').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const result=await api('validate',{id:b.dataset.id});toast(result.message);await route();}catch(e){toast(e.message);b.disabled=false;}});
   }
 }
 
+async function generateEntries(seedId=null){
+  try{await refresh();}catch(error){toast(error.message);return;}
+  const mastered=state.items.filter(i=>i.kind==='word'&&i.progress.some(p=>['mastered','review'].includes(p.status)));
+  const d=modal('Generate new entries',`<p>Choose a mastered word or a category. New vocabulary follows corpus frequency and prerequisite mastery, and joins your next session.</p>
+    <p class="fine-print">Taiwan frequency table: ${state.corpus_forms.toLocaleString()} word forms. The available pool also needs dictionary and drawing support.</p>
+    <form id="generator-form"><label for="generator-source">Generate from</label><select id="generator-source"><option value="category">A category</option><option value="word" ${mastered.length?'':'disabled'}>A mastered word${mastered.length?'':' · master a word first'}</option></select>
+    <div id="generator-word-group"><label for="generator-word">Mastered word</label><select id="generator-word">${mastered.map(i=>`<option value="${escape(i.id)}">${escape(i.text)} · ${escape(i.pinyin)} · ${escape(i.english)}</option>`).join('')}</select></div>
+    <div id="generator-category-group"><label for="generator-category">Category</label><select id="generator-category">${topics.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}<option value="custom">Another category…</option></select><div id="generator-custom-group"><label for="generator-custom">Category in English</label><input id="generator-custom" maxlength="80" placeholder="For example: animals, gardening, coffee"></div></div>
+    <label for="generator-count">How many new entries?</label><input id="generator-count" type="number" min="1" max="20" value="2" required>
+    <button class="primary full generator-submit" type="submit">Generate entries ✧</button><p class="error generator-error" role="alert"></p></form>
+    <div id="generator-results" aria-live="polite"></div>`,true);
+  const form=$('#generator-form',d),source=$('#generator-source',d),word=$('#generator-word',d),category=$('#generator-category',d),custom=$('#generator-custom',d);
+  if(seedId&&mastered.some(i=>i.id===seedId)){source.value='word';word.value=seedId;}
+  function updateFields(){
+    const byWord=source.value==='word',other=category.value==='custom';
+    $('#generator-word-group',d).hidden=!byWord;word.disabled=!byWord;word.required=byWord;
+    $('#generator-category-group',d).hidden=byWord;category.disabled=byWord;
+    $('#generator-custom-group',d).hidden=byWord||!other;custom.disabled=byWord||!other;custom.required=!byWord&&other;
+  }
+  source.onchange=updateFields;category.onchange=updateFields;updateFields();
+  d.addEventListener('close',()=>route(),{once:true});
+  form.onsubmit=async event=>{
+    event.preventDefault();const button=$('.generator-submit',d),error=$('.generator-error',d),results=$('#generator-results',d);
+    button.disabled=true;button.textContent='Finding eligible words…';error.textContent='';
+    const body={source:source.value,count:Number($('#generator-count',d).value)};
+    if(source.value==='word')body.id=word.value;else body.category=category.value==='custom'?custom.value:category.value;
+    try{
+      const result=await api('generate-entries',body);await refresh();
+      results.innerHTML=`<div class="notice">${escape(result.message)}${result.added<result.requested&&result.added?` Only ${result.added} currently meet the frequency and prerequisite rules.`:''}</div><div class="generated-list">${result.items.map(i=>`<article><strong lang="zh-Hant">${escape(i.text)}</strong><span>${escape(i.pinyin)}</span><p>${escape(i.english)}</p></article>`).join('')}</div>`;
+      button.textContent='Generate more ✧';
+    }catch(e){error.textContent=e.message;button.textContent='Try again';}
+    finally{button.disabled=false;}
+  };
+}
+
 function addExample(){
   const d=modal('Add something you want to say',`<p>Search by Traditional Chinese, English, or pinyin. Choose a dictionary meaning before adding it.</p><label for="entry-search">Word or phrase</label><div class="search-wrap"><span>⌕</span><input id="entry-search" placeholder="Try coffee, 電腦, or dian nao…" autocomplete="off"></div><div id="entry-results" aria-live="polite"><p class="fine-print">Your local dictionary is ready to explore.</p></div><div class="manual-add"><p>Can’t find your phrase? Keep it pending for validation.</p><button class="secondary save-pending">Save for validation</button></div>`,true);
   let timer,results=[];const input=$('#entry-search',d);
-  input.oninput=()=>{clearTimeout(timer);const query=input.value;timer=setTimeout(async()=>{try{const data=await api('search?q='+encodeURIComponent(query));if(input.value!==query)return;results=data.results;$('#entry-results',d).innerHTML=results.map((r,index)=>`<div class="search-result"><div><strong lang="zh-Hant">${escape(r.text)}</strong><span>${escape(r.pinyin)}</span><p>${escape(r.english)}</p>${r.meanings?.length>1?`<select aria-label="Choose meaning for ${escape(r.text)}" data-sense="${index}">${r.meanings.map(m=>`<option value="${escape(m)}">${escape(m)}</option>`).join('')}</select>`:''}</div><button class="secondary add-result" data-index="${index}">Add ＋</button></div>`).join('')||'<p class="notice">No validated match. Try a shorter word, or save this phrase for validation.</p>';$$('.add-result',d).forEach(b=>b.onclick=async()=>{const row=results[+b.dataset.index];b.disabled=true;b.textContent='Adding…';try{const sense=$(`[data-sense="${b.dataset.index}"]`,d)?.value;const result=await api('add',{id:row.id,source:row.source,meaning:sense});toast(result.message);await refresh();b.textContent=result.queued?'Waiting for prerequisites':'Added ✓';}catch(e){toast(e.message);b.disabled=false;b.textContent='Retry';}});}catch(e){toast(e.message);}},250);};
+  input.oninput=()=>{clearTimeout(timer);const query=input.value;timer=setTimeout(async()=>{try{const data=await api('search?q='+encodeURIComponent(query));if(input.value!==query)return;results=data.results;$('#entry-results',d).innerHTML=results.map((r,index)=>`<div class="search-result"><div><strong lang="zh-Hant">${escape(r.text)}</strong><span>${escape(r.pinyin)}</span><p>${escape(r.english)}</p>${r.meanings?.length>1?`<select aria-label="Choose meaning for ${escape(r.text)}" data-sense="${index}">${r.meanings.map(m=>`<option value="${escape(m)}">${escape(m)}</option>`).join('')}</select>`:''}</div><button class="secondary add-result" data-index="${index}">${r.deleted?'Restore ＋':'Add ＋'}</button></div>`).join('')||'<p class="notice">No validated match. Try a shorter word, or save this phrase for validation.</p>';$$('.add-result',d).forEach(b=>b.onclick=async()=>{const row=results[+b.dataset.index];b.disabled=true;b.textContent='Adding…';try{const sense=$(`[data-sense="${b.dataset.index}"]`,d)?.value;const result=await api('add',{id:row.id,source:row.source,meaning:sense});toast(result.message);await refresh();b.textContent=result.queued?'Waiting for prerequisites':'Added ✓';}catch(e){toast(e.message);b.disabled=false;b.textContent='Retry';}});}catch(e){toast(e.message);}},250);};
   $('.save-pending',d).onclick=async()=>{try{const result=await api('add',{text:input.value});toast(result.message);d.close();await route();}catch(e){toast(e.message);}};
   input.focus();
 }

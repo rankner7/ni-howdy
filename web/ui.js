@@ -11,15 +11,20 @@ export async function api(path, body) {
   return data;
 }
 
-export function toast(message) {
+export function toast(message, action=null) {
   const node = $('#toast'); node.textContent = message; node.classList.add('visible');
+  if(action){
+    const button=document.createElement('button');button.className='toast-action';button.textContent=action.label;
+    button.onclick=async()=>{button.disabled=true;try{await action.run();node.classList.remove('visible');}catch(error){toast(error.message);}};
+    node.append(button);
+  }
   const dialog=$('#dialog');
   if(dialog.open){
     let feedback=$('.dialog-message',dialog);
     if(!feedback){feedback=document.createElement('p');feedback.className='dialog-message notice';feedback.setAttribute('role','status');$('.dialog-heading',dialog).after(feedback);}
     feedback.textContent=message;
   }
-  clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove('visible'), 5000);
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove('visible'), action?15000:5000);
 }
 
 export function modal(title, content, wide=false) {

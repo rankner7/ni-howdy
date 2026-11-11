@@ -220,6 +220,45 @@ def run():
                 page.locator('.add-result').filter(has_text='Added').first.wait_for()
                 page.get_by_role('button',name='Close dialog').click()
 
+                # Generate from a category, then from a specific mastered word.
+                page.locator('.generate-entries').click()
+                page.locator('#generator-category').select_option('food')
+                page.locator('#generator-count').fill('2')
+                page.locator('.generator-submit').click()
+                page.wait_for_selector('.generated-list article')
+                assert page.locator('.generated-list article').count()==2
+                assert '163,701' in page.locator('dialog').inner_text()
+                page.get_by_role('button',name='Close dialog').click()
+                page.wait_for_selector('.word-card')
+                drink=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^喝$')))
+                drink.locator('.generate-related').click()
+                page.wait_for_selector('dialog[open] #generator-source')
+                assert page.locator('#generator-source').input_value()=='word'
+                assert page.locator('#generator-word').input_value()=='喝'
+                page.locator('#generator-count').fill('1')
+                page.locator('.generator-submit').click()
+                page.wait_for_selector('.generated-list article')
+                page.get_by_role('button',name='Close dialog').click()
+                page.wait_for_selector('.word-card')
+
+                coffee=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^咖啡$')))
+                coffee.locator('.delete-entry').click()
+                coffee.wait_for(state='detached')
+                page.locator('#toast .toast-action').click()
+                coffee.wait_for()
+                # Batch deletion and undo operate only on unmastered selections.
+                boxes=page.locator('.select-entry')
+                assert boxes.count()>=2
+                boxes.nth(0).check()
+                boxes.nth(1).check()
+                assert '2' in page.locator('.delete-selected').inner_text()
+                page.locator('.delete-selected').click()
+                page.locator('#toast').filter(has_text='Deleted 2').wait_for()
+                page.locator('#toast .toast-action').click()
+                page.wait_for_selector('.select-entry')
+                protected=page.request.post(base+'/api/delete-entries',data={'ids':['喝']})
+                assert protected.status==400
+
                 page.set_viewport_size({'width':390,'height':844})
                 navigate('home')
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
@@ -230,7 +269,7 @@ def run():
                 assert not errors, errors
                 assert not external_requests, external_requests
                 browser.close()
-                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase IME, dictionary additions, and no external browser requests.')
+                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
         finally:
             server.terminate()
             server.wait(timeout=10)
