@@ -11,7 +11,9 @@ Requires Python 3.11+ and a modern browser. No Node.js or database server is nee
 ./run.sh
 ```
 
-Open **http://localhost:8765**. Setup installs the Python speech dependencies and downloads the approximately 112 MiB PrimeTTS voice. The dictionary and character data are already bundled. The first launch builds a local dictionary index; pronunciation is generated on your machine and cached after first playback.
+Open **http://localhost:8765**. Setup installs the Python speech dependencies, downloads the approximately 112 MiB PrimeTTS voice, and prepares Taiwan Ministry of Education recordings for supported starter characters. Prepared character recordings take priority over synthesized audio. The browser plays only the character pronunciation, stopping before the source recording's radical/stroke-count narration. All playback remains offline.
+
+The dictionary and character data are already bundled. The first launch builds a local dictionary index and prints its progress; later launches reuse the index. Wait for **Ni-howdy is ready** before opening the URL. Ctrl+C stops startup or the server cleanly; an interrupted dictionary import rolls back and can be retried by running `./run.sh` again. You do not need to activate the virtual environment manually: `run.sh` uses it automatically.
 
 If you only want to explore before installing speech dependencies, `python3 -m nihowdy.server` starts the app using the Python standard library. Listening practice requires completing speech setup.
 
@@ -70,11 +72,20 @@ Without it, the app uses its local spelling lexicon and basic grammar rules. No 
 - Written form (`Hant`) and pronunciation region (`TW`) are separate data fields. Progress includes a default local learner identity, preparing the model for future accounts. Simplified/Mainland content and accounts are not yet exposed in the UI.
 - Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and all drawing grades ignore stroke order/direction. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
 - The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. The app does not teach that ordering. New entries outside the supported drawing set remain unavailable for addition.
-- The speech voice is AI-generated Taiwan Mandarin. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
+- Prepared single-character audio uses reading-specific Taiwan MOE recordings, including 我 (wǒ) and 好 (hǎo). Other entries use an AI-generated Taiwan Mandarin voice. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Isolated-character synthesis can be unclear; preparation prefers the reference recordings and bypasses older synthesized clips automatically. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
 - Local phrase generation currently uses constrained sentence templates. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
 - Backup/restore includes library, settings, sessions, and history. It replaces the local database contents after confirmation; it does not copy voice binaries or generated audio.
 
 See [PLAN.md](PLAN.md) for the detailed specification and [data/README.md](data/README.md) for sources, attribution, and data licenses.
+
+To prepare or refresh character recordings separately after updating dependencies:
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/setup_recordings.py
+```
+
+Original recordings remain unchanged under `.data/audio/recordings/`, with source URLs, hashes, reading-specific identifiers, and playback boundaries in `index.json`. Setup needs internet access; practice does not. If preparation cannot safely separate the character from later narration, it leaves synthesis in use for that entry and reports the skipped recording.
 
 ## Checks
 
