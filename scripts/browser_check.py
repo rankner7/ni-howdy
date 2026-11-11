@@ -2,6 +2,7 @@
 
 Run: .venv/bin/python scripts/browser_check.py
 """
+import io
 import json
 import os
 import re
@@ -11,6 +12,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import wave
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -183,11 +185,38 @@ def run():
                     for word,mode in [('我','flashcards'),('也','drawing'),('要','flashcards'),('喝','drawing'),('茶','flashcards')]:
                         store._enroll(db,word)
                         db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(word,mode))
-                    # A recovered hard prompt stays selected while the generator
-                    # fills the surrounding queue with easier new sentences.
-                    db.execute("INSERT INTO prompts(id,session_id,item_id,mode,level,payload) VALUES ('browser-phrase',?,?,'phrases',2,'{}')",
-                               (store._session(db),phrase))
-                navigate('phrases')
+                phrase_audio=None
+                for level in range(3):
+                    with store.db() as db:
+                        db.execute("UPDATE prompts SET finished=1 WHERE mode='phrases'")
+                        db.execute("UPDATE progress SET level=? WHERE item_id=? AND mode='phrases'", (level,phrase))
+                        # Recover a fixed prompt while generation fills its queue.
+                        db.execute("INSERT INTO prompts(id,session_id,item_id,mode,level,payload) VALUES (?,?,?,'phrases',?,'{}')",
+                                   (f'browser-phrase-{level}',store._session(db),phrase,level))
+                    navigate('phrases')
+                    assert page.locator('.prompt-content .pinyin').count()==(1 if level==0 else 0)
+                    assert page.locator('#pinyin-input').count()==(1 if level==2 else 0)
+                    before=page.request.get(base+'/api/state').json()['stats']['attempts']
+                    with page.expect_response(lambda response:'/api/audio?prompt=' in response.url) as response:
+                        page.get_by_role('button',name='Play phrase pronunciation').click()
+                    assert response.value.ok
+                    assert response.value.headers['content-type'].startswith('audio/wav')
+                    page.locator('.audio-status').filter(has_text='locally generated').wait_for(timeout=30000)
+                    # Read a cached response independently of Chromium's media
+                    # response body handling, after actual browser playback.
+                    clip=page.request.get(response.value.url).body()
+                    with wave.open(io.BytesIO(clip)) as recording:
+                        assert recording.getnchannels()==1
+                        assert recording.getnframes()/recording.getframerate()>.2
+                    if phrase_audio is None:phrase_audio=clip
+                    else:assert clip==phrase_audio  # Disk cache is shared across levels.
+                    # Replaying uses the in-page audio cache and never scores a miss.
+                    page.get_by_role('button',name='Play phrase pronunciation').click()
+                    page.locator('.audio-button').filter(has=page.locator('span')).wait_for()
+                    assert page.request.get(base+'/api/state').json()['stats']['attempts']==before
+                    with store.db() as db:
+                        row=db.execute('SELECT hint,scored FROM prompts WHERE id=?',(f'browser-phrase-{level}',)).fetchone()
+                        assert (row['hint'],row['scored'])==(0,0)
                 page.wait_for_selector('#pinyin-input')
                 for pinyin,char in [('wo','我'),('ye','也'),('yao','要'),('he','喝'),('cha','茶')]:
                     page.locator('#pinyin-input').fill(pinyin)
@@ -287,7 +316,7 @@ def run():
                 assert not errors, errors
                 assert not external_requests, external_requests
                 browser.close()
-                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
+                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase audio at all levels and IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
         finally:
             server.terminate()
             server.wait(timeout=10)

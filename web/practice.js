@@ -37,7 +37,7 @@ export async function practice(mode, state, onUpdate, addExample) {
         ${prompt.text?`<div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>`:''}
         ${prompt.english?`<div class="prompt-english">${escape(prompt.english)}</div>`:''}
         ${prompt.pinyin?`<p class="pinyin">${escape(prompt.pinyin)}</p>`:''}
-        ${mode==='flashcards'?`<button class="audio-button ${prompt.level===2?'large':''}" aria-label="Play Mandarin pronunciation"><span>▶</span> Listen${prompt.level===2?' to the word':''}</button><p class="audio-status" role="status"></p>`:''}
+        ${mode!=='drawing'?`<button class="audio-button ${mode==='flashcards'&&prompt.level===2?'large':''}" aria-label="${mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'}"><span>▶</span> Listen${mode==='phrases'?' to the phrase':prompt.level===2?' to the word':''}</button><p class="audio-status" role="status"></p>`:''}
       </div>
       ${prompt.hint?'<div class="notice amber">Information opened · this prompt counts as one miss.</div>':''}
       <form id="answer-form">
@@ -57,7 +57,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
       if(isChinese)setupIME();
     }
-    if(mode==='flashcards')$('.audio-button').onclick=play;
+    if(mode!=='drawing')$('.audio-button').onclick=play;
     $('#answer-form').onsubmit=submit;
   }
   async function play(){
