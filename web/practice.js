@@ -18,7 +18,7 @@ export async function practice(mode, state, onUpdate, addExample) {
   async function load(){
     const next=await api('prompt',{mode});
     if(main.dataset.route!==mode||!document.querySelector('#practice-card'))return;
-    if(prompt?.id!==next.id&&audio){audio.pause();URL.revokeObjectURL(audio.src);audio=null;}
+    if(prompt?.id!==next.id&&audio){audio.pause();audio.dispose?.();URL.revokeObjectURL(audio.src);audio=null;}
     prompt=next;
     render();
     if(!prompt.empty){
@@ -64,9 +64,24 @@ export async function practice(mode, state, onUpdate, addExample) {
     const button=$('.audio-button'),status=$('.audio-status'),error=$('#practice-error');
     button.disabled=true;status.textContent='Preparing local audio…';
     try{
-      if(!audio){const r=await fetch('/api/audio?prompt='+encodeURIComponent(prompt.id));if(!r.ok)throw new Error((await r.json()).error);audio=new Audio(URL.createObjectURL(await r.blob()));}
+      if(!audio){
+        const r=await fetch('/api/audio?prompt='+encodeURIComponent(prompt.id));
+        if(!r.ok)throw new Error((await r.json()).error);
+        const blob=await r.blob();
+        const src=URL.createObjectURL(blob);
+        if(r.headers.has('X-Audio-End')){
+          const context=new AudioContext();
+          const buffer=await context.decodeAudioData(await blob.arrayBuffer());
+          let playing=null;
+          const start=Number(r.headers.get('X-Audio-Start')||0),end=Number(r.headers.get('X-Audio-End'));
+          audio={src,pause(){if(playing){try{playing.stop();}catch{}playing=null;}},dispose(){context.close();},
+            async play(){await context.resume();this.pause();playing=context.createBufferSource();playing.buffer=buffer;playing.connect(context.destination);playing.start(0,start,end-start);}};
+        }else audio=new Audio(src);
+        audio.sourceLabel=r.headers.get('X-Audio-Source')||'Local pronunciation';
+        audio.clipStart=Number(r.headers.get('X-Audio-Start')||0);
+      }
       if(main.dataset.route!==mode)return;
-      audio.currentTime=0;await audio.play();status.textContent='Taiwan Mandarin · locally generated voice';
+      audio.currentTime=audio.clipStart;await audio.play();status.textContent=audio.sourceLabel;
     }catch(e){error.textContent=e.message;status.textContent='Audio unavailable. This does not count as a miss.';}
     finally{button.disabled=false;}
   }
@@ -97,7 +112,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       $('#feedback').innerHTML=`<div class="feedback ${result.correct?'success':'retry'}"><span class="feedback-symbol">${result.correct?'✓':'↻'}</span><div><h3>${result.correct?'That’s right.':result.hint?'A little context goes a long way.':'Keep going. You’re learning.'}</h3><p>${escape(result.message)}</p><div class="answer-reveal"><span lang="zh-Hant">${escape(result.item.text)}</span> <small>${escape(result.item.pinyin)}</small><p>${result.item.answers.map(escape).join(' / ')}</p></div>${result.details.length?`<p class="fine-print">${result.details.map((d,i)=>`Character ${prompt.characters[i].index+1}: ${d.correct?'✓ recognised':'try again'}`).join(' · ')}</p>`:''}${result.added.length?`<p>Discovered for your next session: <strong>${result.added.map(escape).join(' · ')}</strong></p>`:''}<button class="text-button after-info">Explore the meaning ↗</button></div></div><button class="primary next-prompt">Next prompt →</button>`;
       $('.after-info').onclick=()=>showInfo(result.item);
       $('.prompt-info').onclick=()=>showInfo(result.item);
-      $('.next-prompt').onclick=async()=>{audio?.pause();if(audio?.src)URL.revokeObjectURL(audio.src);audio=null;await load();};
+      $('.next-prompt').onclick=async()=>{audio?.pause();audio?.dispose?.();if(audio?.src)URL.revokeObjectURL(audio.src);audio=null;await load();};
       if(drawing)drawing.clearSaved();sessionStorage.removeItem('nihowdy:answer:'+prompt.id);await onUpdate();$('.next-prompt').focus();
     }catch(e){$('#practice-error').textContent=e.message;$('.check-answer').disabled=false;if(drawing)updateDrawingButton();else $('.check-answer').textContent='Check answer ↵';}
     finally{busy=false;}

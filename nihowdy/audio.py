@@ -1,8 +1,10 @@
 """Local Taiwan Mandarin speech with explicit dictionary readings and caching."""
 import hashlib
+import json
 import re
 import threading
 import wave
+import unicodedata
 from pathlib import Path
 
 
@@ -15,7 +17,32 @@ class Audio:
         self.session = None
         self.lock = threading.Lock()
 
+    def recording(self, item):
+        manifest = self.cache / 'recordings/index.json'
+        if not manifest.exists():
+            return None
+        entries = json.loads(manifest.read_text())
+        key = unicodedata.normalize('NFC', item['text']+'|'+item['pinyin'].strip().lower())
+        entry = entries.get(key)
+        if entry:
+            path = (manifest.parent / entry['file']).resolve()
+            if path.is_relative_to(manifest.parent.resolve()) and path.is_file():
+                return dict(entry, path=path)
+        return None
+
+    def playback(self, item):
+        recording = self.recording(item)
+        if recording:
+            return {'source':'Taiwan Ministry of Education recording', 'start':recording['start'], 'end':recording['end']}
+        return {'source':'Taiwan Mandarin - locally generated voice'}
+
     def available(self):
+        if (self.cache / 'recordings/index.json').exists():
+            if json.loads((self.cache / 'recordings/index.json').read_text()):
+                return True
+        return self.synthesis_available()
+
+    def synthesis_available(self):
         try:
             import onnxruntime  # noqa: F401
             import pypinyin  # noqa: F401
@@ -24,11 +51,14 @@ class Audio:
             return False
 
     def render(self, item):
+        reference = self.recording(item)
+        if reference:
+            return reference['path']
         key = hashlib.sha256(("primetts-v21-pinyin-v1:"+item["text"]+":"+item["pinyin"]).encode()).hexdigest()
         output = self.cache / (key+".wav")
         if output.exists():
             return output
-        if not self.available():
+        if not self.synthesis_available():
             raise ValueError("Local audio is not installed. Run ./setup.sh, then ./run.sh. Your answer has not been scored.")
         with self.lock:
             if output.exists():

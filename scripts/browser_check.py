@@ -25,6 +25,8 @@ def run():
         store=Store(db_path)
         store.import_dictionary()
         (Path(directory)/'models').symlink_to(ROOT/'.data/models', target_is_directory=True)
+        (Path(directory)/'audio').mkdir()
+        (Path(directory)/'audio/recordings').symlink_to(ROOT/'.data/audio/recordings', target_is_directory=True)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1',0))
             port=sock.getsockname()[1]
@@ -87,6 +89,23 @@ def run():
                 page.locator('#answer').fill('computer.')
                 page.get_by_role('button',name='Check answer').click()
                 page.wait_for_selector('.feedback.retry')
+
+                for character in ['我','好']:
+                    configure(character,'flashcards',2)
+                    navigate('flashcards')
+                    page.evaluate("""() => {
+                        window.scheduledAudio = [];
+                        const start = AudioBufferSourceNode.prototype.start;
+                        AudioBufferSourceNode.prototype.start = function(...args) {
+                            window.scheduledAudio.push({args, fullDuration:this.buffer.duration});
+                            return start.apply(this,args);
+                        };
+                    }""")
+                    page.get_by_role('button',name='Play Mandarin pronunciation').click()
+                    page.locator('.audio-status').filter(has_text='Ministry of Education recording').wait_for(timeout=10000)
+                    scheduled=page.evaluate('window.scheduledAudio')
+                    assert len(scheduled)==1 and .3 < scheduled[0]['args'][2] < 1
+                    assert scheduled[0]['fullDuration'] > 5  # Never play the following narration.
 
                 configure('電腦','flashcards',2)
                 navigate('flashcards')

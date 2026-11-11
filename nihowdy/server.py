@@ -17,7 +17,7 @@ from .store import Store
 class Handler(BaseHTTPRequestHandler):
     server_version = "NiHowdy/1"
 
-    def send_data(self, status, data, content_type="application/json; charset=utf-8", download=False):
+    def send_data(self, status, data, content_type="application/json; charset=utf-8", download=False, headers=None):
         if not isinstance(data, bytes):
             data = json.dumps(data, ensure_ascii=False).encode()
         self.send_response(status)
@@ -25,6 +25,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for name, value in (headers or {}).items():
+            self.send_header(name, str(value))
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")
         if download:
             self.send_header("Content-Disposition", 'attachment; filename="ni-howdy-backup.json"')
@@ -61,7 +63,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/audio":
                 item = store.audio_item(query.get("prompt", [""])[0])
                 audio = self.server.audio.render(item)
-                return self.send_data(200, audio.read_bytes(), "audio/wav")
+                playback = self.server.audio.playback(item)
+                headers = {'X-Audio-Source':playback['source']}
+                if 'end' in playback:
+                    headers.update({'X-Audio-Start':playback['start'], 'X-Audio-End':playback['end']})
+                return self.send_data(200, audio.read_bytes(), "audio/mpeg" if audio.suffix == '.mp3' else "audio/wav", headers=headers)
             if path == "/api/example":
                 # Separate worked example, never the answer to a graded prompt.
                 glyph = store.hanzi["木"]
