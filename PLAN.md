@@ -135,11 +135,13 @@ Input -> dictionary/phrase lookup -> sense and reading resolution
 
 - A vocabulary item counts as mastered when its current flashcard OR drawing progress is mastered or pending a hard review.
 - Proposed counting convention: segment phrases into stored vocabulary tokens; count occurrences, including grammar/function words, and exclude punctuation. A multi-character word counts as one token. Do not substitute mastery of a component character for mastery of an unrelated compound.
-- Require `mastered_token_count / total_token_count >= 0.8`. Equivalently, allow at most `floor(0.2 * total_token_count)` unknown tokens. A five-token phrase can contain one unknown token; a four-token phrase cannot.
-- Generate from topic-appropriate, validated grammar templates and phrase examples first. Cache optional model-generated phrases after validation. Store tokenization, accepted translations, and a short grammar explanation.
-- Recheck the ratio when admitting a phrase to practice. If prerequisite mastery falls below 80%, retain phrase progress but pause its eligibility until coverage recovers.
-- When insufficient vocabulary is mastered, explain which words to learn first. Do not bypass the threshold to populate the page. An ungraded introductory example remains possible.
-- Apply the eligibility rule to manually added phrases as well; valid phrases can wait in the library.
+- Require more than three vocabulary tokens and `mastered_token_count / total_token_count > 0.8`. Four out of five is exactly 80% and is rejected; five out of six is accepted. Multi-character vocabulary items count as one word.
+- Generate locally during phrase practice using mastered subjects, actions, and semantically suitable objects. Diversify plans, preferences, questions, time expressions, locations, negation, coordination, and destinations as supported vocabulary permits. Balance grammar families to avoid a single prolific pattern dominating. Cache optional model-validated custom phrases after local checks. Store tokenization, accepted translations, and a short grammar explanation.
+- Recheck the ratio when admitting a phrase to practice. If prerequisite mastery reaches 80% or below, retain phrase progress but pause its eligibility until coverage recovers.
+- When insufficient vocabulary is mastered, direct the learner back to vocabulary practice. Do not bypass the threshold to populate the page. An ungraded introductory example remains possible.
+- Apply the length and coverage rules to manually added phrases as well. Unsupported custom phrases remain pending privately.
+- Keep phrase records, generated history, and mastery in internal storage, including backups, to prevent duplicates after restart or restore. Treat punctuation/spacing variants as one sentence. Preserve existing progression and scheduled reviews.
+- Do not list phrases in the word library, mastered bin, search, or recent activity. Only active phrase practice, its explanations/feedback, and worked examples show sentences.
 
 ## Explanations and sources
 
