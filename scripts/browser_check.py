@@ -97,7 +97,7 @@ def run():
                 page.wait_for_selector('.feedback.retry')
 
                 for character in ['我','好']:
-                    configure(character,'flashcards',2)
+                    configure(character,'flashcards',1)
                     navigate('flashcards')
                     page.evaluate("""() => {
                         window.scheduledAudio = [];
@@ -115,7 +115,8 @@ def run():
 
                 configure('電腦','flashcards',2)
                 navigate('flashcards')
-                assert page.locator('.prompt-hanzi').count()==0
+                assert page.locator('.prompt-hanzi').inner_text()=='電腦'
+                assert page.locator('.audio-button').count()==0
                 assert page.locator('.prompt-content .pinyin').count()==0
                 page.get_by_role('button',name='Show explanation and count one incorrect attempt').click()
                 page.wait_for_selector('dialog[open] .entry-heading')

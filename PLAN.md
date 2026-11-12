@@ -29,7 +29,7 @@ Every practice screen has an Add example action using the same validation pipeli
 | --- | --- | --- | --- |
 | Flashcards | Easy | Characters and pinyin | English meaning |
 | Flashcards | Medium | Characters and playable audio; no pinyin | English meaning |
-| Flashcards | Hard | Playable audio only | English meaning |
+| Flashcards | Hard | Characters only, no sound | English meaning |
 | Drawing | Easiest | Component assembly; proposed default: English and pinyin cues | Drag components into their correct positions |
 | Drawing | Easy | Character with missing strokes, English and pinyin | Draw the missing strokes |
 | Drawing | Medium | Character with missing strokes and English; no pinyin | Draw the missing strokes |

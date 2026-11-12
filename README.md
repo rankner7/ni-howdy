@@ -26,7 +26,7 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 
 ## Learning rules
 
-- **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning.
+- **Flashcards:** characters + pinyin → characters + audio → characters only (no sound). Type the English meaning.
 - **Drawing:** assemble components → guided drawing in Taiwan stroke order → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time. Guided drawing animates the next stroke, checks your trace, and fits accepted strokes to the template. Complete the **whole word five times**, once per random practice appearance, before advancing; retries do not erase completed repetitions or count as misses. Progress survives restarts.
 - **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation. A **Listen to the phrase** button is available at every difficulty, including Hard, and after answering. Playback uses the local voice, is cached, and does not count as an incorrect attempt.
 - One correct answer advances a difficulty, except guided drawing, which requires five whole-word completions. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.

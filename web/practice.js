@@ -33,11 +33,11 @@ export async function practice(mode, state, onUpdate, addExample) {
     card.innerHTML=`<div class="practice-top"><span class="pill">${prompt.review?'↻ Review · ':''}${escape(prompt.level_name)}</span><span class="attempt-counter">${prompt.failures} / 3 misses</span><button class="icon-button prompt-info" aria-label="Show explanation and count one incorrect attempt">ⓘ</button></div>
       <div class="level-track">${prompt.levels.map((l,i)=>`<span class="${i<=prompt.level?'filled':''}" title="${escape(l)}"></span>`).join('')}</div>
       <div class="prompt-content ${mode}">
-        <p class="eyebrow">${mode==='drawing'?'DRAW THE MEANING':isChinese?'SAY THIS IN CHINESE':prompt.level===2?'LISTEN CLOSELY':'WHAT DOES THIS MEAN?'}</p>
+        <p class="eyebrow">${mode==='drawing'?'DRAW THE MEANING':isChinese?'SAY THIS IN CHINESE':'WHAT DOES THIS MEAN?'}</p>
         ${prompt.text?`<div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>`:''}
         ${prompt.english?`<div class="prompt-english">${escape(prompt.english)}</div>`:''}
         ${prompt.pinyin?`<p class="pinyin">${escape(prompt.pinyin)}</p>`:''}
-        ${mode!=='drawing'?`<button class="audio-button ${mode==='flashcards'&&prompt.level===2?'large':''}" aria-label="${mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'}"><span>▶</span> Listen${mode==='phrases'?' to the phrase':prompt.level===2?' to the word':''}</button><p class="audio-status" role="status"></p>`:''}
+        ${(mode==='phrases'||(mode==='flashcards'&&prompt.level<2))?`<button class="audio-button" aria-label="${mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'}"><span>▶</span> Listen${mode==='phrases'?' to the phrase':''}</button><p class="audio-status" role="status"></p>`:''}
       </div>
       ${prompt.hint?'<div class="notice amber">Information opened · this prompt counts as one miss.</div>':''}
       <form id="answer-form">
@@ -57,7 +57,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
       if(isChinese)setupIME();
     }
-    if(mode!=='drawing')$('.audio-button').onclick=play;
+    if($('.audio-button',card))$('.audio-button',card).onclick=play;
     $('#answer-form').onsubmit=submit;
   }
   async function play(){
@@ -105,7 +105,7 @@ export async function practice(mode, state, onUpdate, addExample) {
     try{
       if(mode==='drawing'){const entries=drawing.saveCharacter();if(!entries){updateDrawingButton();return;}payload.drawings=entries;}
       else {payload.text=$('#answer').value;if(!payload.text.trim())throw new Error('Enter an answer before checking.');}
-      if(mode==='flashcards'&&prompt.level>=1&&!state.services.audio)throw new Error('Install local audio with ./setup.sh before practising this level.');
+      if(mode==='flashcards'&&prompt.level===1&&!state.services.audio)throw new Error('Install local audio with ./setup.sh before practising this level.');
       busy=true;$('.check-answer').disabled=true;$('.check-answer').textContent='Checking…';
       const result=await api('answer',payload);
       $('#answer-form').hidden=true;
@@ -122,7 +122,7 @@ export async function practice(mode, state, onUpdate, addExample) {
 
 async function example(mode){
   const e=await api('example');
-  const content=mode==='phrases'?`<div class="example-hanzi" lang="zh-Hant">${e.phrase}</div><p class="pinyin center">${e.phrase_pinyin}</p><p class="center">${e.phrase_english}</p><p>Start by translating characters with pinyin. Later, read just the characters. At the hardest level, use the pinyin keyboard to compose the Chinese sentence, including 。</p>`:mode==='drawing'?`${glyphSVG(e.strokes,'example-glyph')}<p class="center"><strong>${e.text}</strong> · ${e.pinyin} · ${e.english}</p><p>Place components into the character’s layout. Next, trace each stroke in Taiwan order. Complete the whole word five times across random practice appearances, then practise adding missing strokes. At the hardest level, draw the full shape from its English meaning. Guided practice checks stroke order and direction; later levels grade shape.</p>`:`<div class="example-hanzi" lang="zh-Hant">${e.text}</div><p class="pinyin center">${e.pinyin}</p><p>Type <strong>wood</strong> for this example. At Medium, pinyin is replaced by audio. At Hard, you hear the word without seeing its characters.</p>`;
+  const content=mode==='phrases'?`<div class="example-hanzi" lang="zh-Hant">${e.phrase}</div><p class="pinyin center">${e.phrase_pinyin}</p><p class="center">${e.phrase_english}</p><p>Start by translating characters with pinyin. Later, read just the characters. At the hardest level, use the pinyin keyboard to compose the Chinese sentence, including 。</p>`:mode==='drawing'?`${glyphSVG(e.strokes,'example-glyph')}<p class="center"><strong>${e.text}</strong> · ${e.pinyin} · ${e.english}</p><p>Place components into the character’s layout. Next, trace each stroke in Taiwan order. Complete the whole word five times across random practice appearances, then practise adding missing strokes. At the hardest level, draw the full shape from its English meaning. Guided practice checks stroke order and direction; later levels grade shape.</p>`:`<div class="example-hanzi" lang="zh-Hant">${e.text}</div><p class="pinyin center">${e.pinyin}</p><p>Type <strong>wood</strong> for this example. At Medium, pinyin is replaced by audio. At Hard, you see only the characters, without pinyin or sound.</p>`;
   const d=modal('A quick example',`<span class="pill">Ungraded · just for learning</span>${content}<button class="primary full example-done">Got it. Let’s practise →</button>`);
   $('.example-done',d).onclick=()=>d.close();
 }

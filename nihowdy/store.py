@@ -516,7 +516,7 @@ class Store:
                "finished": bool(row["finished"])}
         if mode == "drawing" or (mode == "phrases" and level == 2):
             out["english"] = item["english"]
-        if (mode == "flashcards" and level < 2) or (mode == "phrases" and level < 2):
+        if mode == "flashcards" or (mode == "phrases" and level < 2):
             out["text"] = item["text"]
         if (mode in ("flashcards", "phrases") and level == 0) or (mode == "drawing" and level <= 2):
             out["pinyin"] = item["pinyin"]
@@ -736,11 +736,6 @@ class Store:
                 if not isinstance(text, str) or len(text) > 2000:
                     raise ValueError("Enter a short text answer.")
                 accepted = item["chinese_answers"] if prompt["mode"] == "phrases" and prompt["level"] == 2 else list(item["answers"])
-                if prompt["mode"] == "flashcards" and prompt["level"] == 2:
-                    # Identical audio readings must accept every known homophone sense.
-                    for other in self._items(db).values():
-                        if other["kind"] == "word" and other["pinyin"] == item["pinyin"]:
-                            accepted.extend(other["answers"])
                 if prompt["mode"] == "phrases" and prompt["level"] < 2:
                     correct = correct_english_phrase(text, accepted, item["text"])
                 else:

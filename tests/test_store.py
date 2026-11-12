@@ -86,13 +86,22 @@ class StoreTests(unittest.TestCase):
             db.execute("UPDATE progress SET status='review' WHERE item_id='茶' AND mode='drawing'")
         self.assertFalse(self.store.next_prompt('phrases').get('empty', False))
 
-    def test_prompt_recovery_and_audio_only(self):
+    def test_prompt_recovery_and_characters_only(self):
         self.only(level=2)
         p = self.store.next_prompt('flashcards')
-        self.assertNotIn('text',p)
+        self.assertEqual(p['text'], '電腦')
         self.assertNotIn('pinyin',p)
         self.assertNotIn('english',p)
         self.assertEqual(self.store.next_prompt('flashcards')['id'], p['id'])
+
+    def test_hard_flashcards_reject_other_homophone_meanings(self):
+        self.only(level=2)
+        with self.store.db() as db:
+            other = dict(self.store._item(db, '電腦'), id='homophone', text='同音', answers=['unrelated meaning'])
+            db.execute('INSERT INTO items VALUES (?,?)', (other['id'], json.dumps(other)))
+        prompt = self.store.next_prompt('flashcards')
+        result = self.store.answer(prompt['id'], {'text': 'unrelated meaning'})
+        self.assertFalse(result['correct'])
 
     def test_drawing_no_ink_fails(self):
         self.only('一','drawing',2)
