@@ -67,8 +67,10 @@ class PhraseEngineTests(unittest.TestCase):
         phrases = {p['text']: p for p in self.generated()}
         self.assertEqual(phrases['我是好人。']['english'], 'I am a good person.')
         self.assertEqual(phrases['你喜歡好人。']['english'], 'You like good people.')
-        self.assertEqual(phrases['我有水，也有茶。']['english'], 'I have water and tea.')
-        self.assertEqual(phrases['我喜歡水，也喜歡茶。']['english'], 'I like water and tea.')
+        self.assertEqual(phrases['我有水，也有茶。']['english'], 'I have water, and I also have tea.')
+        self.assertIn('I have water and tea.', phrases['我有水，也有茶。']['answers'])
+        self.assertEqual(phrases['我喜歡水，也喜歡茶。']['english'], 'I like water, and I also like tea.')
+        self.assertIn('I like water and tea.', phrases['我喜歡水，也喜歡茶。']['answers'])
         self.assertEqual(phrases['我有水，你有茶。']['english'], 'I have water, and you have tea.')
         self.assertEqual(phrases['我有茶，你也有茶。']['english'], 'I have tea, and you have tea too.')
         self.assertIn('我也有電腦。', phrases)

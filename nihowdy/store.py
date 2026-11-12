@@ -13,6 +13,7 @@ from itertools import islice
 from time import monotonic
 from zoneinfo import ZoneInfo
 
+from .answers import correct_english_phrase
 from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
 from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
@@ -285,6 +286,17 @@ class Store:
             # semantically constrained pattern can produce the same sentence.
             custom = item.get('explanation_origin') == 'Model-checked grammar with local vocabulary validation'
             if key in possible or custom:
+                if key in possible and item.get('phrase_engine') and not custom:
+                    current = possible[key]
+                    # Refresh reviewed translations on saved automatic phrases,
+                    # retaining their identity, extra answers, and all progress.
+                    if item['english'] in current['answers']:
+                        updated = dict(item, english=current['english'],
+                                       answers=list(dict.fromkeys(current['answers'] + item['answers'])),
+                                       explanation=current['explanation'])
+                        if updated != item:
+                            db.execute('UPDATE items SET data=? WHERE id=?', (encode(updated), item['id']))
+                            items[item['id']] = updated
                 options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
         if generate:
             active = sum(items[item_id].get('phrase_engine') == ENGINE_VERSION and
@@ -729,7 +741,10 @@ class Store:
                     for other in self._items(db).values():
                         if other["kind"] == "word" and other["pinyin"] == item["pinyin"]:
                             accepted.extend(other["answers"])
-                correct = correct_answer(text, accepted)
+                if prompt["mode"] == "phrases" and prompt["level"] < 2:
+                    correct = correct_english_phrase(text, accepted, item["text"])
+                else:
+                    correct = correct_answer(text, accepted)
             if prompt["scored"]:
                 result = json.loads(prompt["result"])
                 result.update(answer_correct=correct, message="Information was opened, so this remains one incorrect attempt. " + result["message"])

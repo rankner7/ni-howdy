@@ -110,7 +110,8 @@ def candidates(items, mastered):
     places = slots(PLACES, known=True)
     seen = set()
 
-    def sentence(parts, english, family, explanation, question=False, clause_at=None):
+    def sentence(parts, english, family, explanation, question=False, clause_at=None,
+                 alternatives=()):
         if any(part is None for part in parts):
             return None
         tokens = [part['id'] for part in parts]
@@ -125,7 +126,7 @@ def candidates(items, mastered):
         sources = {s['url']: s for part in parts for s in part.get('sources', [])}
         return dict(id='phrase:' + text, kind='phrase', text=text,
                     pinyin=' '.join(part['pinyin'] for part in parts), english=english,
-                    answers=[english], chinese_answers=[text], tokens=tokens,
+                    answers=[english, *alternatives], chinese_answers=[text], tokens=tokens,
                     topic=parts[-1]['topic'], region='TW', script='Hant', status='ready',
                     characters=[], explanation=explanation,
                     explanation_origin='Generated locally from a constrained grammar pattern',
@@ -173,12 +174,17 @@ def candidates(items, mastered):
                                    f"{name} {'has' if third else 'have'} {noun}, and {other_pronoun} {other_have} {noun} too.",
                                    'shared-possession', 'Two clauses contrast their subjects. 也 in the second clause means too.', clause_at=3)
             for (first, a), (second, b) in combinations(objects, 2):
+                pronoun = 'I' if name == 'I' else name.lower()
+                have_verb = 'has' if third else 'have'
+                like_verb = 'likes' if third else 'like'
                 yield sentence([subject, have, first, functions['也'], have, second],
-                               f"{name} {'has' if third else 'have'} {a} and {b}.", 'possession',
-                               'Two 有 clauses share a subject. 也 links the second thing the speaker has.', clause_at=3)
+                               f'{name} {have_verb} {a}, and {pronoun} also {have_verb} {b}.', 'possession',
+                               'Two 有 clauses share a subject. 也 means also and links the second thing the speaker has.',
+                               clause_at=3, alternatives=(f'{name} {have_verb} {a} and {b}.',))
                 yield sentence([subject, like, first, functions['也'], like, second],
-                               f"{name} {'likes' if third else 'like'} {a} and {b}.", 'preferences',
-                               'Repeat 喜歡 to link two preferences; omit the repeated subject in the second clause.', clause_at=3)
+                               f'{name} {like_verb} {a}, and {pronoun} also {like_verb} {b}.', 'preferences',
+                               'Repeat 喜歡 to link two preferences. 也 means also; the second clause shares the first subject. 和 instead joins noun objects.',
+                               clause_at=3, alternatives=(f'{name} {like_verb} {a} and {b}.',))
                 for other, other_name in subjects:
                     if other['id'] == subject['id']:
                         continue
