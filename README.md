@@ -1,10 +1,14 @@
-# 你howdy
+# ni-howdy
 
 A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional characters with tone-marked Hanyu Pinyin, discover character construction, and build vocabulary around your interests.
 
 ## TODOS
- - on correct answer, sound should play automatically
- - generated phrases should use mastered words to create phrases with 80% known
+ - add a listening page that draws from mastered phrases
+ - chart showing mastery over time with relative learning levels like 1st grade, second grade, etc for vocab
+     - similar chart for phrases
+ 
+## Fixes
+ - word library should have way to filter by mastered and/or category
 
 
 ## Run locally
@@ -18,7 +22,7 @@ Requires Python 3.11+ and a modern browser. No Node.js or database server is nee
 
 Open **http://localhost:8765**. Setup installs the Python speech dependencies, downloads the approximately 112 MiB PrimeTTS voice, and prepares Taiwan Ministry of Education recordings for supported starter characters. Prepared character recordings take priority over synthesized audio. The browser plays only the character pronunciation, stopping before the source recording's radical/stroke-count narration. All playback remains offline.
 
-The dictionary and character data are already bundled. The first launch builds a local dictionary index and prints its progress; later launches reuse the index. Wait for **你howdy is ready** before opening the URL. Ctrl+C stops startup or the server cleanly; an interrupted dictionary import rolls back and can be retried by running `./run.sh` again. You do not need to activate the virtual environment manually: `run.sh` uses it automatically.
+The dictionary and character data are already bundled. The first launch builds a local dictionary index and prints its progress; later launches reuse the index. Wait for **Ni-howdy is ready** before opening the URL. Ctrl+C stops startup or the server cleanly; an interrupted dictionary import rolls back and can be retried by running `./run.sh` again. You do not need to activate the virtual environment manually: `run.sh` uses it automatically.
 
 If you only want to explore before installing speech dependencies, `python3 -m nihowdy.server` starts the app using the Python standard library. Listening practice requires completing speech setup.
 
@@ -31,31 +35,23 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 
 ## Learning rules
 
-- **New words:** the first appearance in flashcards and in drawing opens the full explanation automatically. Press Enter or Continue; no answer, miss, or level advancement is recorded. Practice rolls continuously, and new words join the shuffle as soon as they are added.
-- **Flashcards:** characters + pinyin → characters + audio → characters only (no sound). Type the English meaning.
-- **Drawing:** assemble components → guided drawing in Taiwan stroke order → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time. Guided drawing animates the next stroke, checks your trace, and fits accepted strokes to the template. Complete the **whole word five times**, once per random practice appearance, before advancing; retries do not erase completed repetitions or count as misses. Progress survives restarts. Incorrect answers at Easy, Medium, and Hard show the correct character overlaid with your drawing: missing/incomplete strokes have dashed red outlines, and extra or misplaced ink appears in red. Hard overlays use the same position and scale alignment as grading.
-- **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation. A **Listen to the phrase** button is available at every difficulty, including Hard, and after answering. Playback uses the local voice, is cached, and does not count as an incorrect attempt.
-- Pronunciation plays automatically once, after a 0.5-second delay, when each flashcard or phrase appears and its difficulty allows sound. If your browser blocks autoplay, use **Listen** to play it.
-- One correct answer advances a difficulty, except guided drawing, which requires five whole-word completions. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.
+- **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning.
+- **Drawing:** assemble components → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time.
+- **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation.
+- One correct answer advances a difficulty. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.
 - Passing the hardest level moves that skill into the mastered bin. Each unchecked local calendar day gets one independent 5% review trial. A returning item appears at its hardest level. Reloads never reroll checked dates.
 - Opening the information icon immediately records one incorrect attempt. You may finish for feedback, but the prompt cannot then advance you. Reopening the explanation and resubmitting cannot count additional failures.
-- Selection is random, weighted toward lower difficulties and unseen items. Base weights halve at each level; unseen items receive 2× weight, and repeated lowest-level failure blocks receive up to a 4× recovery boost.
-- First mastery in either flashcards or drawing selects up to two contextual neighbours, with selection weights equal to their observed frequency in Taiwan written text and news raised to the power of 1.5, giving common words a stronger preference. Unattested words are excluded from automatic additions. New multi-character words can enter either deck without prior mastery of their individual characters or word parts. Selected words join the rolling practice shuffle immediately; unfinished expansions remain pending.
-- Phrase practice generates sentences from mastered subjects, identities, descriptions, possessions, preferences, and actions with suitable objects. Each phrase must contain **more than three vocabulary words** and **strictly more than 80% known words**, mastered in either flashcards or drawing. Function words count, punctuation does not, and a multi-character word counts once. Four out of five is insufficient; five out of six qualifies. Pending hard reviews still count as mastered until demotion.
+- Selection is random, weighted toward lower difficulties. Base weights halve at each level; new flashcards have the same weight as Medium flashcards. Unseen items in other modes receive 2× weight, and repeated lowest-level failure blocks receive up to a 4× recovery boost.
+- First mastery in either flashcards or drawing selects up to two contextual neighbours, with odds proportional to their observed frequency in Taiwan written text and news. Unattested words are excluded from automatic additions. Each new compound requires mastery of all meaningful parts before it enters either deck. Selected words become eligible next session; unfinished expansions remain pending.
+- Phrase practice requires at least 80% of its vocabulary tokens to be mastered in either flashcards or drawing. Function words count, punctuation does not. The library shows prerequisites and can add them to the deck. Pending hard reviews still count as mastered until demotion.
 
-English phrase answers accept equivalent forms using conservative offline rules: case, whitespace, optional ending punctuation, common unambiguous contractions (such as “don't” / “do not”), and ordinary preferences such as “I like drinking coffee” / “I like to drink coffee”. For supported countable objects, singular/plural alternatives are accepted when the Chinese leaves number unspecified: 吃蘋果 accepts “eat an apple” and “eat apples”. Explicit quantities remain significant. Supported clauses accept “also” before the verb (or after “be”/a supported modal) and “too” at the end, plus an optional “and” between complete clauses: “You have eggs, he also has eggs” matches “You have eggs, and he has eggs too”. Shared-subject phrases such as 他喜歡蘋果，也喜歡蛋 show “He likes apples, and he also likes eggs” to teach 也 explicitly, while also accepting “He likes apples and eggs”. Existing saved automatic phrases receive the updated translations without resetting progress. These rules also apply to existing saved phrases. They preserve subjects, negation, tense, objects, and spelling; arbitrary paraphrases still need an explicit entry in the stored answer list. Flashcard answers continue to match that list ignoring only case and surrounding whitespace, and Chinese composition still requires punctuation. Spelling and basic grammar feedback appears before submission without editing your answer or changing grading.
-
-Word flashcards use a shared dictionary-gloss parser for saved and new cards. It separates recognized usage notes from translations, accepts semicolon-separated alternatives, and makes leading “a”/“an” optional in ordinary noun glosses. This handles “moo (sound made by cow)” → “moo” and “an exit” → “exit” without word-specific exceptions. Source definitions and sense identities remain intact. Negation, explicit quantities, definite articles, spelling, and uncertain syntax remain significant. See [answer grading](docs/answer-grading.md) for the policy, its limits, and the read-only dictionary audit.
+English answers match a stored list of legitimate translations. Case and surrounding whitespace are ignored; punctuation and spelling remain significant. Articles are accepted only when explicitly included in the answer list. Spelling and basic grammar feedback appears before submission without editing your answer or changing grading.
 
 ## Personal vocabulary and explanations
 
-Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. The word library also supports individual/batch deletion of unmastered entries with Undo, and a separate **Generate entries** action using a mastered word or category. Deleted words remain eligible for future suggestions. Supported words join both vocabulary modes directly, including multi-character words whose parts have not been mastered. Previously queued compounds join automatically. Phrase practice prepares a small queue using varied local patterns: identities, descriptions, possession, shared possession, comparisons, plans, preferences, questions, time expressions, locations, negation, coordination, and destinations. Available patterns depend on your mastered vocabulary and the catalog’s supported lexical roles. Automatic generation works offline without an AI provider.
+Choose topics or describe interests on the home page. Use **Add example** on any practice page to search the bundled dictionary by Chinese, English, or pinyin and select a specific meaning. Supported words join both vocabulary modes once their meaningful parts are mastered. A requested compound waits in the library with its prerequisites and unlocks automatically when ready. Suitable nouns also receive locally generated phrase templates; the 80% rule still controls when those phrases appear.
 
-Dictionary pronunciation notes apply to the meaning they annotate. For 和 (“and”), search offers hé first and hàn as a documented Taiwan alternative, with plain English meanings and a separate usage note. Existing cards containing the old annotated definition are repaired without resetting progress; the local dictionary index rebuilds once after this update.
-
-Starter entries include cached explanations, character construction, related vocabulary examples, and source links. New dictionary entries receive source-backed construction notes. A fuller LLM explanation can be generated once and stored when an optional provider is configured. Generated and mastered phrases stay in internal storage for progression, scheduled reviews, and duplicate prevention; they are absent from the word library, mastered bin, and search results. Punctuation and spacing variants count as the same sentence. Existing phrase history is retained, while short or unsupported older automatic templates are paused.
-
-For a custom phrase, use **Add example → Validate and add phrase** when the optional provider is configured. It must pass naturalness, vocabulary, length, and mastery checks before admission. Without a provider, you can save it privately and submit the same text again after configuration. Pending phrases have no public listing.
+Starter entries include cached explanations, character construction, related vocabulary examples, and source links. New dictionary entries receive source-backed construction notes. A fuller LLM explanation can be generated once and stored when an optional provider is configured. Entirely novel phrases stay pending until validation; they never silently enter graded practice.
 
 ### Optional content provider
 
@@ -68,7 +64,7 @@ export NIHOWDY_LLM_MODEL='your-model-name'
 ./run.sh
 ```
 
-The service is called when adding a word that needs a fuller explanation, when you explicitly generate an explanation from the library, or when you choose **Validate and add phrase** for a custom phrase. Explanation results are cached by entry; subsequent practice does not call the provider. Requests contain the requested entry and source material, not your learning history. Citations are restricted to supplied source URLs. Model-generated historical and grammatical claims still need editorial review; a citation is not independent proof of correctness.
+The service is called when adding a word that needs a fuller explanation, when you explicitly generate an explanation from the library, or when you choose **Validate pending** for a custom phrase. Explanation results are cached by entry; subsequent practice does not call the provider. Requests contain the requested entry and source material, not your learning history. Citations are restricted to supplied source URLs. Model-generated historical and grammatical claims still need editorial review; a citation is not independent proof of correctness.
 
 For stronger local spelling and grammar feedback, optionally run [LanguageTool locally](https://dev.languagetool.org/http-server) and set:
 
@@ -83,13 +79,13 @@ Without it, the app uses its local spelling lexicon and basic grammar rules. No 
 
 - Python HTTP service + SQLite, with browser-native ES modules and CSS. Learning rules, storage, dictionary content, speech, and optional providers are separate modules.
 - Written form (`Hant`) and pronunciation region (`TW`) are separate data fields. Progress includes a default local learner identity, preparing the model for future accounts. Simplified/Mainland content and accounts are not yet exposed in the UI.
-- Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and missing-stroke/free-drawing grades ignore stroke order/direction. Guided drawing checks each stroke in order and direction against a Taiwan template. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
-- The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. These templates are used for component assembly and the later shape-only levels. Guided drawing uses separate Taiwan MOE outlines and direction tracks, never a PRC-order fallback. Existing progress stays at its equivalent difficulty when the new level is inserted; existing mastered entries stay mastered. New entries outside the supported drawing set remain unavailable for addition.
+- Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and all drawing grades ignore stroke order/direction. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
+- The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. The app does not teach that ordering. New entries outside the supported drawing set remain unavailable for addition.
 - Prepared single-character audio uses reading-specific Taiwan MOE recordings, including 我 (wǒ) and 好 (hǎo). Other entries use an AI-generated Taiwan Mandarin voice. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Isolated-character synthesis can be unclear; preparation prefers the reference recordings and bypasses older synthesized clips automatically. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
-- Local phrase generation uses curated word roles and varied constrained grammar patterns, so its vocabulary coverage and sentence variety are bounded. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
+- Local phrase generation currently uses constrained sentence templates. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
 - Backup/restore includes library, settings, sessions, and history. It replaces the local database contents after confirmation; it does not copy voice binaries or generated audio.
 
-See [PLAN.md](PLAN.md) for the detailed specification, [docs/vocabulary.md](docs/vocabulary.md) for addition weights and vocabulary admission, and [data/README.md](data/README.md) for sources, attribution, and data licenses.
+See [PLAN.md](PLAN.md) for the detailed specification, [docs/vocabulary.md](docs/vocabulary.md) for addition weights and compound prerequisites, and [data/README.md](data/README.md) for sources, attribution, and data licenses.
 
 To prepare or refresh character recordings separately after updating dependencies:
 
@@ -100,18 +96,6 @@ To prepare or refresh character recordings separately after updating dependencie
 
 Original recordings remain unchanged under `.data/audio/recordings/`, with source URLs, hashes, reading-specific identifiers, and playback boundaries in `index.json`. Setup needs internet access; practice does not. If preparation cannot safely separate the character from later narration, it leaves synthesis in use for that entry and reports the skipped recording.
 
-## Taiwan guided drawing data
-
-`./setup.sh` prepares the full available Taiwan MOE template set for offline use. To update an existing installation without reinstalling audio:
-
-```bash
-python3 scripts/prepare_taiwan.py
-```
-
-Restart the app afterward. You can also pass a downloaded `g0v/zh-stroke-data` source `.tar.gz` as the argument. The importer writes `nihowdy/assets/taiwan-strokes.json.gz` and excludes synthetic characters without original XML data. Words missing any Taiwan template wait at Guided until support is available; other modes remain usable.
-
-Preparation reports the number of installed characters and any exclusions. Coordinates outside the nominal source canvas are fitted uniformly with the whole character, preserving proportions and stroke direction; malformed or non-finite coordinates remain excluded. Rerun preparation after importer updates to rebuild previously excluded templates. See [Taiwan stroke sources](docs/taiwan-strokes.md) for provenance and usage terms. Backup version 2 includes repetition counts and still accepts version 1 backups.
-
 ## Checks
 
 The learning and persistence tests run without extra packages:
@@ -120,8 +104,6 @@ The learning and persistence tests run without extra packages:
 python3 -m unittest discover -v
 ```
 
-Guided progression and template import can be checked without the dictionary data using `python3 -m unittest tests.test_guided tests.test_learning`. Canvas event/state checks run with `node tests/guided_ui.mjs`; they do not replace a browser layout check.
-
 For browser checks, install development dependencies and use an existing Chrome installation:
 
 ```bash
@@ -129,4 +111,4 @@ For browser checks, install development dependencies and use an existing Chrome 
 .venv/bin/python scripts/browser_check.py
 ```
 
-Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, guided tracing and five repetitions, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.
+Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.

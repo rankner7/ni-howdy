@@ -13,10 +13,12 @@ from itertools import islice
 from time import monotonic
 from zoneinfo import ZoneInfo
 
-from .answers import correct_english_phrase, with_word_answers, word_sense_matches
-from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOSS,
+from .answers import (correct_chinese_phrase, correct_english_phrase,
+                      with_word_answers, word_sense_matches)
+from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOSS, TOPIC_KEYWORDS,
                       component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
+from .topics import TOPICS, COLLECTIONS, TAXONOMY_VERSION
 from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
 from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
@@ -78,7 +80,37 @@ class Store:
                     self._enroll(db, word)
             self._repair_generated_senses(db)
             self._repair_dictionary_conjunction(db)
+            self._migrate_topics(db)
             self._activate_waiting(db)
+
+    def _migrate_topics(self, db):
+        """Reclassify saved meanings without replacing IDs or learning history."""
+        if self._settings(db).get('taxonomy_version', 0) >= TAXONOMY_VERSION:
+            return
+        curated = {item['id']: item for item in starter_items() if item['kind'] == 'word'}
+        known = set(TOPIC_KEYWORDS) | {'essentials', 'custom'}
+        for row in db.execute('SELECT id,data FROM items').fetchall():
+            item = json.loads(row['data'])
+            if item.get('kind') != 'word':
+                continue
+            original = item.get('topic', 'custom')
+            if original not in known:
+                continue  # Preserve explicitly named custom subjects.
+            starter = curated.get(item['id'])
+            if starter:
+                item['topic'] = starter['topic']
+                if starter.get('collections'):
+                    item['collections'] = sorted(set(item.get('collections', [])) | set(starter['collections']))
+            else:
+                item['topic'] = infer_topic([item['english']])
+            if original == 'essentials':
+                item['collections'] = sorted(set(item.get('collections', [])) | {'essentials'})
+            db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), row['id']))
+        # “People & learning” previously included both subjects.
+        interests = self._settings(db)['interests']
+        if 'people' in interests and 'school' not in interests:
+            db.execute("UPDATE settings SET value=? WHERE key='interests'", (encode(interests + ['school']),))
+        db.execute("INSERT OR REPLACE INTO settings VALUES ('taxonomy_version',?)", (encode(TAXONOMY_VERSION),))
 
     def _migrate_drawing(self, db):
         columns = {row[1] for row in db.execute('PRAGMA table_info(progress)')}
@@ -360,6 +392,7 @@ class Store:
             unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
                           for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
             return {"settings": self._settings(db), "items": list(items.values()), "session": session,
+                    "topics": TOPICS, "collections": COLLECTIONS,
                     'corpus_forms':len(self.vocabulary.counts),
                     "stats": {"attempts": count, "correct": correct, "mastered": len(mastered),
                               "reviews": sum(p["status"] == "review" for p in progress),
@@ -390,7 +423,8 @@ class Store:
                 for item in self._items(db).values():
                     if item["kind"] != "word":
                         continue
-                    if item["topic"] in settings["interests"] or (text and any(a.casefold() in text for a in item["answers"] if len(a) > 3)):
+                    if (item["topic"] in settings["interests"] or
+                            any(c in settings["interests"] for c in item.get("collections", []))) or (text and any(a.casefold() in text for a in item["answers"] if len(a) > 3)):
                         # A small opening deck leaves room for mastery-triggered expansion.
                         existing = db.execute("SELECT COUNT(*) FROM progress p JOIN items i ON i.id=p.item_id WHERE p.mode='flashcards' AND json_extract(i.data,'$.topic')=?", (item["topic"],)).fetchone()[0]
                         if existing < 4:
@@ -445,7 +479,7 @@ class Store:
                     continue
                 if mode == "phrases" and item['id'] not in phrase_options:
                     continue
-                candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode))))
+                candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode), mode)))
             if mode == 'phrases':
                 totals = {}
                 for item_id, chance in candidates:
@@ -527,28 +561,31 @@ class Store:
         return self._fill_expansion(db, item, session, [])
 
     def _fill_expansion(self, db, item, session, existing, include_deleted=True):
-        added=self._select_entries(db,item,2-len(existing),session,include_deleted=include_deleted)
+        added=self._select_entries(db,item,2-len(existing),session,include_deleted=include_deleted, category_only=True)
         db.execute('UPDATE expansions SET added=? WHERE item_id=?',(encode(existing+[i['id'] for i in added]),item['id']))
         return [i['text'] for i in added]
 
-    def _candidate_pool(self, db, item, include_deleted=True):
+    def _candidate_pool(self, db, item, include_deleted=True, category_only=False):
         enrolled = {r[0] for r in db.execute("SELECT DISTINCT item_id FROM progress")}
         enrolled_forms={self._item(db,item_id)['text'] for item_id in enrolled}
-        terms=self._neighbor_terms(item)
+        if category_only and item['topic'] in {'custom', 'essentials'}:
+            return []  # Unclassified words do not share a meaningful category.
+        terms=[] if item['topic'] == 'essentials' else self._neighbor_terms(item)
         candidates = [i for i in self._items(db,include_deleted=include_deleted).values() if i["kind"] == "word" and
                       not misleading_food_sense(i['text'], i['pinyin'], i['english']) and
-                      ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["id"] in i.get("related_to", []) or self._related_meaning(i['answers'],terms)) and i['text'] not in enrolled_forms and
+                      (i["topic"] == item["topic"] if category_only else
+                       ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["topic"] in i.get("collections", []) or item["id"] in i.get("related_to", []) or self._related_meaning(i['answers'],terms))) and i['text'] not in enrolled_forms and
                       self.vocabulary.frequency_count(i['text'])>0 and
                       all(c in self.hanzi for c in i["text"])]
-        candidates.extend(self._dictionary_neighbors(db, item, enrolled | {i["id"] for i in candidates}))
+        candidates.extend(self._dictionary_neighbors(db, item, enrolled | {i["id"] for i in candidates}, category_only=category_only))
         unique={}
         for entry in candidates:
             if entry['text'] not in enrolled_forms:
                 unique.setdefault(entry['text'],entry)
         return list(unique.values())
 
-    def _select_entries(self, db, source, count, after, include_deleted=True):
-        candidates=self._candidate_pool(db,source,include_deleted=include_deleted)
+    def _select_entries(self, db, source, count, after, include_deleted=True, category_only=False):
+        candidates=self._candidate_pool(db,source,include_deleted=include_deleted,category_only=category_only)
         selected=weighted_sample([(entry,self.vocabulary.addition_weight(entry['text'])) for entry in candidates],count,self.rng)
         added=[]
         for entry in selected:
@@ -581,30 +618,29 @@ class Store:
                 source=dict(id='category:'+category,topic=category,english=category,kind='word')
             else:
                 raise ValueError('Generate from a mastered word or a category.')
-            added=self._select_entries(db,source,count,self._session(db))
+            added=self._select_entries(db,source,count,self._session(db),
+                                       category_only=values.get('source') == 'category' and source['topic'] in TOPIC_KEYWORDS)
             return {'items':added,'requested':count,'added':len(added),
                     'message':f"Added {len(added)} new entries to your practice shuffle." if added else
                               'No eligible new entries were found. Try another category.'}
 
     def _neighbor_terms(self, item):
-        return {
-            "clothing":["shirt","sweater","socks","jacket","clothing","shoes"],
-            "technology":["computer","keyboard","telephone","software","printer"],
-            "food":["tea","coffee","milk","fruit","bread","rice"],
-            "travel":["train","bus","ticket","station","transport"],
-            "people":["student","teacher","school","friend","family"],
-            "essentials":["person","good","small","big"],
-        }.get(item["topic"], [w[:-3]+'y' if w.endswith('ies') else w[:-1] if w.endswith('s') and not w.endswith('ss') else w
-                             for w in re.findall(r"[a-z]+",item["english"].lower()) if len(w)>=3 and w not in {'the','and','for','with','from','that','this'}][:3])
+        return TOPIC_KEYWORDS.get(item['topic'], [
+            w[:-3]+'y' if w.endswith('ies') else w[:-1] if w.endswith('s') and not w.endswith('ss') else w
+            for w in re.findall(r"[a-z]+", item["english"].lower())
+            if len(w)>=3 and w not in {'the','and','for','with','from','that','this'}][:3])
 
     def _related_meaning(self, meanings, terms):
         return next((sense for sense in meanings if any(
             re.search(r'\b'+re.escape(term)+(r'\b' if term in {'good','big','small'} else r's?\b'),sense,re.I)
             for term in terms)),None)
 
-    def _dictionary_neighbors(self, db, item, exclude):
+    def _dictionary_neighbors(self, db, item, exclude, category_only=False):
         """Prepare contextual candidates locally from the complete matching pool."""
-        terms=self._neighbor_terms(item)
+        if item['topic'] == 'essentials':
+            return []
+        terms=(TOPIC_KEYWORDS.get(item['topic'], self._neighbor_terms(item))
+               if category_only else self._neighbor_terms(item))
         if not terms:
             return []
         existing_forms = {i["text"] for i in self._items(db,include_deleted=True).values()}
@@ -622,9 +658,11 @@ class Store:
             sense=automatic_sense(form,row['pinyin'],meanings)
             if not sense or not self._related_meaning([sense],terms):
                 continue
+            if category_only and item['topic'] in TOPIC_KEYWORDS and infer_topic([sense]) != item['topic']:
+                continue
             entry=dict(id=form+":"+hashlib.sha256((row["pinyin"]+sense).encode()).hexdigest()[:8],
                        kind="word",text=form,pinyin=row["pinyin"],english=sense,answers=[sense],
-                       chinese_answers=[form],topic=item["topic"],tokens=[],region="TW",script="Hant",status="ready",
+                       chinese_answers=[form],topic=infer_topic([sense]),tokens=[],region="TW",script="Hant",status="ready",
                        related_to=[item["id"]],explanation="Related vocabulary selected from local dictionary meanings. Explore its character construction below.",
                        explanation_origin="Dictionary-backed construction; fuller explanation available with an optional provider",
                        characters=construction(form,self.hanzi),sources=sources_for(form))
@@ -726,7 +764,9 @@ class Store:
                 if not isinstance(text, str) or len(text) > 2000:
                     raise ValueError("Enter a short text answer.")
                 accepted = item["chinese_answers"] if prompt["mode"] == "phrases" and prompt["level"] == 2 else list(item["answers"])
-                if prompt["mode"] == "phrases" and prompt["level"] < 2:
+                if prompt["mode"] == "phrases" and prompt["level"] == 2:
+                    correct = correct_chinese_phrase(text, accepted)
+                elif prompt["mode"] == "phrases" and prompt["level"] < 2:
                     correct = correct_english_phrase(text, accepted, item["text"])
                 else:
                     correct = correct_answer(text, accepted)
@@ -742,6 +782,8 @@ class Store:
     def audio_item(self, prompt_id):
         with self.db() as db:
             prompt = self._prompt(db, prompt_id)
+            if prompt['mode'] == 'phrases' and prompt['level'] == 2:
+                raise ValueError('Audio is unavailable for Hard phrase practice.')
             return self._item(db, prompt["item_id"])
 
     def item(self, item_id):
@@ -924,5 +966,6 @@ class Store:
             self._items(db)  # Validate JSON before committing the replacement.
             self._repair_generated_senses(db)
             self._repair_dictionary_conjunction(db)
+            self._migrate_topics(db)
             self._activate_waiting(db)
         return {"restored": True}

@@ -12,7 +12,7 @@
     "chinese_answers": [
       "我"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -41,6 +41,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -55,7 +58,7 @@
     "chinese_answers": [
       "你"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -84,6 +87,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -99,7 +105,7 @@
     "chinese_answers": [
       "他"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -128,6 +134,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -145,7 +154,7 @@
     "chinese_answers": [
       "是"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -174,6 +183,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -190,7 +202,7 @@
     "chinese_answers": [
       "有"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -219,6 +231,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -234,7 +249,7 @@
     "chinese_answers": [
       "要"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -263,6 +278,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -278,7 +296,7 @@
     "chinese_answers": [
       "也"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -307,6 +325,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -322,7 +343,7 @@
     "chinese_answers": [
       "喜歡"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -358,6 +379,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -372,7 +396,7 @@
     "chinese_answers": [
       "好"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -401,6 +425,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -416,7 +443,7 @@
     "chinese_answers": [
       "人"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -445,6 +472,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -459,7 +489,7 @@
     "chinese_answers": [
       "一"
     ],
-    "topic": "essentials",
+    "topic": "time",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -488,6 +518,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -502,7 +535,7 @@
     "chinese_answers": [
       "二"
     ],
-    "topic": "essentials",
+    "topic": "time",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -531,6 +564,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -545,7 +581,7 @@
     "chinese_answers": [
       "三"
     ],
-    "topic": "essentials",
+    "topic": "time",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -574,6 +610,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -589,7 +628,7 @@
     "chinese_answers": [
       "大"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -618,6 +657,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -633,7 +675,7 @@
     "chinese_answers": [
       "小"
     ],
-    "topic": "essentials",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -662,6 +704,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -676,7 +721,7 @@
     "chinese_answers": [
       "你好"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -712,6 +757,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -727,7 +775,7 @@
     "chinese_answers": [
       "謝謝"
     ],
-    "topic": "essentials",
+    "topic": "people",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -756,6 +804,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -800,6 +851,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -887,6 +941,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -930,6 +987,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -1328,6 +1388,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "essentials"
     ]
   },
   {
@@ -1544,7 +1607,7 @@
     "chinese_answers": [
       "腦"
     ],
-    "topic": "technology",
+    "topic": "health",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -1588,7 +1651,7 @@
     "chinese_answers": [
       "手"
     ],
-    "topic": "technology",
+    "topic": "health",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2485,7 +2548,7 @@
     "chinese_answers": [
       "買"
     ],
-    "topic": "travel",
+    "topic": "shopping",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2573,7 +2636,7 @@
     "chinese_answers": [
       "家"
     ],
-    "topic": "people",
+    "topic": "home",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2668,7 +2731,7 @@
     "chinese_answers": [
       "學生"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2719,7 +2782,7 @@
     "chinese_answers": [
       "老師"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2770,7 +2833,7 @@
     "chinese_answers": [
       "中文"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2823,7 +2886,7 @@
     "chinese_answers": [
       "學"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2867,7 +2930,7 @@
     "chinese_answers": [
       "學校"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2918,7 +2981,7 @@
     "chinese_answers": [
       "書"
     ],
-    "topic": "people",
+    "topic": "school",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -2966,7 +3029,7 @@
     "chinese_answers": [
       "看"
     ],
-    "topic": "people",
+    "topic": "actions",
     "tokens": [],
     "region": "TW",
     "script": "Hant",
@@ -3303,7 +3366,7 @@
       "買",
       "書"
     ],
-    "topic": "people",
+    "topic": "school",
     "region": "TW",
     "script": "Hant",
     "status": "ready",
@@ -3711,7 +3774,7 @@
       "買",
       "書"
     ],
-    "topic": "people",
+    "topic": "school",
     "region": "TW",
     "script": "Hant",
     "status": "ready",
@@ -3830,7 +3893,7 @@
       "是",
       "學生"
     ],
-    "topic": "people",
+    "topic": "school",
     "region": "TW",
     "script": "Hant",
     "status": "ready",
@@ -3870,7 +3933,7 @@
       "學",
       "中文"
     ],
-    "topic": "people",
+    "topic": "school",
     "region": "TW",
     "script": "Hant",
     "status": "ready",

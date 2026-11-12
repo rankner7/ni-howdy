@@ -23,7 +23,7 @@ GUIDE = {'strokes': ['M 100 200 L 800 200 L 800 230 L 100 230 Z',
                      'M 440 100 L 470 100 L 470 800 L 440 800 Z'],
          'medians': [[[100, 215], [800, 215]], [[455, 100], [455, 800]]]}
 HANZI = {ch: {'strokes': GUIDE['strokes'], 'medians': GUIDE['medians']} for ch in ''.join(WORDS)}
-ITEMS = [dict(id=w, text=w, kind='word', topic='essentials', pinyin='test', english=w,
+ITEMS = [dict(id=w, text=w, kind='word', topic='nature', pinyin='test', english=w,
               answers=[w], chinese_answers=[w], tokens=[], sources=[], characters=[])
          for w in WORDS]
 

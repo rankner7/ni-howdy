@@ -56,6 +56,9 @@ def run():
                 assert 'Small steps.' in page.locator('h1').inner_text()
                 page.screenshot(path=str(ROOT/'artifacts/home-desktop.png'),full_page=True)
                 page.get_by_role('button',name='Personalise my topics').click()
+                assert page.locator('input[name=topic]').count()==15
+                assert page.locator('input[name=topic][value=school]').count()==1
+                assert page.locator('input[name=topic][value=essentials]').count()==1
                 page.locator('#interest-text').fill('Coffee and computers')
                 page.get_by_role('button',name='Save my interests').click()
                 page.wait_for_selector('dialog',state='hidden')
@@ -257,22 +260,26 @@ def run():
                     assert page.locator('.prompt-content .pinyin').count()==(1 if level==0 else 0)
                     assert page.locator('#pinyin-input').count()==(1 if level==2 else 0)
                     before=page.request.get(base+'/api/state').json()['stats']['attempts']
-                    with page.expect_response(lambda response:'/api/audio?prompt=' in response.url) as response:
+                    if level < 2:
+                        with page.expect_response(lambda response:'/api/audio?prompt=' in response.url) as response:
+                            page.get_by_role('button',name='Play phrase pronunciation').click()
+                        assert response.value.ok
+                        assert response.value.headers['content-type'].startswith('audio/wav')
+                        page.locator('.audio-status').filter(has_text='locally generated').wait_for(timeout=30000)
+                        # Read a cached response independently of Chromium's media
+                        # response body handling, after actual browser playback.
+                        clip=page.request.get(response.value.url).body()
+                        with wave.open(io.BytesIO(clip)) as recording:
+                            assert recording.getnchannels()==1
+                            assert recording.getnframes()/recording.getframerate()>.2
+                        if phrase_audio is None:phrase_audio=clip
+                        else:assert clip==phrase_audio
                         page.get_by_role('button',name='Play phrase pronunciation').click()
-                    assert response.value.ok
-                    assert response.value.headers['content-type'].startswith('audio/wav')
-                    page.locator('.audio-status').filter(has_text='locally generated').wait_for(timeout=30000)
-                    # Read a cached response independently of Chromium's media
-                    # response body handling, after actual browser playback.
-                    clip=page.request.get(response.value.url).body()
-                    with wave.open(io.BytesIO(clip)) as recording:
-                        assert recording.getnchannels()==1
-                        assert recording.getnframes()/recording.getframerate()>.2
-                    if phrase_audio is None:phrase_audio=clip
-                    else:assert clip==phrase_audio  # Disk cache is shared across levels.
-                    # Replaying uses the in-page audio cache and never scores a miss.
-                    page.get_by_role('button',name='Play phrase pronunciation').click()
-                    page.locator('.audio-button').filter(has=page.locator('span')).wait_for()
+                    else:
+                        assert page.locator('.audio-button').count()==0
+                        denied=page.request.get(base+'/api/audio?prompt=browser-phrase-2')
+                        assert denied.status==400
+                        assert 'Hard phrase' in denied.json()['error']
                     assert page.request.get(base+'/api/state').json()['stats']['attempts']==before
                     with store.db() as db:
                         row=db.execute('SELECT hint,scored FROM prompts WHERE id=?',(f'browser-phrase-{level}',)).fetchone()
@@ -281,8 +288,7 @@ def run():
                 for pinyin,char in [('wo','我'),('ye','也'),('yao','要'),('he','喝'),('cha','茶')]:
                     page.locator('#pinyin-input').fill(pinyin)
                     page.locator('#candidates button').filter(has=page.locator('span',has_text=char)).first.click()
-                page.get_by_role('button',name='。',exact=True).click()
-                assert page.locator('#answer').input_value()=='我也要喝茶。'
+                assert page.locator('#answer').input_value()=='我也要喝茶'
                 page.screenshot(path=str(ROOT/'artifacts/phrases-desktop.png'),full_page=True)
                 page.get_by_role('button',name='Check answer').click()
                 page.wait_for_selector('.feedback.success')
@@ -315,8 +321,23 @@ def run():
                 page.locator('.add-result').filter(has_text='Added').first.wait_for()
                 page.get_by_role('button',name='Close dialog').click()
 
+                # Subjects and the beginner collection have independent library filters.
+                page.locator('#status-filter').select_option('all')
+                page.locator('#category-filter').select_option('health')
+                assert page.locator('.word-card').count()==2
+                assert set(page.locator('.word-glyph').all_text_contents())=={'手','腦'}
+                assert set(page.locator('.word-card .pill').all_text_contents())=={'Body & health'}
+                page.locator('#category-filter').select_option('essentials')
+                assert page.locator('.word-card').count()>=17
+                assert 'Everyday essentials' not in page.locator('.word-card .pill').all_text_contents()
+                page.locator('#category-filter').select_option('all')
+                page.locator('#status-filter').select_option('enrolled')
+
                 # Generate from a category, then from a specific mastered word.
                 page.locator('.generate-entries').click()
+                page.wait_for_selector('dialog[open] #generator-category')
+                assert page.locator('#generator-category optgroup[label="Subject categories"] option').count()==14
+                assert page.locator('#generator-category optgroup[label="Beginner collection"] option').count()==1
                 page.locator('#generator-category').select_option('food')
                 page.locator('#generator-count').fill('2')
                 page.locator('.generator-submit').click()
@@ -364,7 +385,7 @@ def run():
                 assert not errors, errors
                 assert not external_requests, external_requests
                 browser.close()
-                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase audio at all levels and IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
+                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase audio at Easy/Medium and silent Hard IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
         finally:
             server.terminate()
             server.wait(timeout=10)

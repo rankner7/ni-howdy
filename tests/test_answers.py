@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from nihowdy.answers import correct_english_phrase
+from nihowdy.answers import correct_chinese_phrase, correct_english_phrase
 from nihowdy.phrases import ACTIONS, candidates
 from nihowdy.store import Store, encode
 from nihowdy.vocabulary import VocabularyPolicy
@@ -122,6 +122,26 @@ class EnglishPhraseTests(unittest.TestCase):
                            'He likes apples, and he also has eggs'):
                 with self.subTest(chinese=chinese, answer=answer):
                     self.assertFalse(correct_english_phrase(answer, accepted, chinese))
+
+
+class ChinesePhraseTests(unittest.TestCase):
+    def test_final_sentence_mark_is_optional_but_content_is_not(self):
+        for source, answer in [('我喜歡喝咖啡。', '我喜歡喝咖啡'),
+                               ('你有蛋嗎？', '你有蛋嗎'),
+                               ('太好了！', '太好了'),
+                               ('我喜歡喝咖啡。', '我喜歡喝咖啡.'),
+                               ('你有蛋嗎？', '你有蛋嗎?'),
+                               ('太好了！', '太好了!')]:
+            with self.subTest(source=source, answer=answer):
+                self.assertTrue(correct_chinese_phrase(answer, [source]))
+                self.assertTrue(correct_chinese_phrase(source, [source]))
+
+    def test_wrong_ending_and_internal_punctuation_still_fail(self):
+        accepted = ['你有蛋，他也有蛋。']
+        for answer in ('你有蛋他也有蛋', '你有蛋、他也有蛋', '你有蛋，他也有雞蛋',
+                       '你有蛋，他也有蛋？', '你有蛋，他也有蛋。。', '', '。'):
+            with self.subTest(answer=answer):
+                self.assertFalse(correct_chinese_phrase(answer, accepted))
 
 
 class PhraseGradingStoreTests(unittest.TestCase):
@@ -251,9 +271,29 @@ class PhraseGradingStoreTests(unittest.TestCase):
         self.assertFalse(result['correct'])
         self.assertEqual(result['progress']['failures'], 1)
 
-    def test_chinese_composition_keeps_punctuation(self):
+    def test_hard_chinese_composition_accepts_no_ending_punctuation(self):
         result = self.store.answer(self.prompt(level=2), {"text": "我喜歡喝咖啡"})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['progress']['status'], 'mastered')
+
+    def test_hard_chinese_composition_keeps_internal_punctuation(self):
+        result = self.store.answer(self.prompt('你有蛋，他也有蛋。', level=2),
+                                   {'text': '你有蛋他也有蛋'})
         self.assertFalse(result['correct'])
+
+    def test_hard_phrase_audio_is_unavailable_even_after_answering(self):
+        prompt = self.prompt(level=2)
+        with self.assertRaisesRegex(ValueError, 'Audio is unavailable'):
+            self.store.audio_item(prompt)
+        self.store.answer(prompt, {'text': '我喜歡喝咖啡'})
+        with self.assertRaisesRegex(ValueError, 'Audio is unavailable'):
+            self.store.audio_item(prompt)
+
+    def test_easy_phrase_audio_remains_available(self):
+        self.assertEqual(self.store.audio_item(self.prompt(level=0))['text'], '我喜歡喝咖啡。')
+
+    def test_medium_phrase_audio_remains_available(self):
+        self.assertEqual(self.store.audio_item(self.prompt(level=1))['text'], '我喜歡喝咖啡。')
 
     def test_flashcards_keep_existing_policy(self):
         result = self.store.answer(self.prompt("咖啡", mode="flashcards"), {"text": "coffee."})

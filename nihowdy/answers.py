@@ -154,3 +154,22 @@ def correct_english_phrase(text, accepted, chinese=""):
     object_forms = tuple(unspecified_objects(chinese))
     key = english_phrase_key(text, object_forms)
     return bool(key) and any(key == english_phrase_key(answer, object_forms) for answer in accepted)
+
+
+ENDING_PUNCTUATION = {'。': '.', '？': '?', '！': '!'}
+
+
+def correct_chinese_phrase(text, accepted):
+    """Match composition exactly, with only the final sentence mark optional."""
+    answer = unicodedata.normalize('NFC', text.strip())
+    if not answer:
+        return False
+    for expected in accepted:
+        expected = unicodedata.normalize('NFC', expected.strip())
+        if answer == expected:
+            return True
+        if expected[-1:] in ENDING_PUNCTUATION:
+            stem = expected[:-1]
+            if answer in (stem, stem + ENDING_PUNCTUATION[expected[-1]]):
+                return True
+    return False

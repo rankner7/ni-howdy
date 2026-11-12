@@ -68,7 +68,7 @@ class VocabularyAdmissionTests(unittest.TestCase):
         # Small explicit fixtures keep admission tests independent of corpus files.
         forms='我 你 也 要 喝 水 茶 好 一 二 三 電腦 電 腦 人 大 毛衣 毛 衣'.split()
         self.items=[dict(id=text,kind='word',text=text,pinyin=text,english=text,
-                         answers=[text],chinese_answers=[text],topic='essentials',tokens=[])
+                         answers=[text],chinese_answers=[text],topic='actions',tokens=[])
                     for text in forms]
         self.hanzi={c:{} for c in ''.join(forms)+'腳趾銀行電話'}
         self.store=self.open_store()
@@ -79,7 +79,7 @@ class VocabularyAdmissionTests(unittest.TestCase):
              patch('nihowdy.store.VocabularyPolicy',return_value=VocabularyPolicy({})):
             return Store(self.path,random.Random(8))
 
-    def insert(self,db,text,pinyin,english,topic='essentials'):
+    def insert(self,db,text,pinyin,english,topic='actions'):
         item=dict(self.store._item(db,'茶'),id='test:'+text+':'+pinyin,text=text,
                   pinyin=pinyin,english=english,answers=[english],topic=topic)
         db.execute('INSERT INTO items VALUES (?,?)',(item['id'],json.dumps(item,ensure_ascii=False)))
@@ -174,6 +174,36 @@ class VocabularyAdmissionTests(unittest.TestCase):
         self.store.state()
         with self.store.db() as db:
             self.assertEqual([dict(p) for p in db.execute("SELECT * FROM progress WHERE item_id='電腦'")],before)
+
+    def test_mastery_pool_uses_category_not_related_words_or_matching_other_topics(self):
+        self.store.vocabulary=VocabularyPolicy({'毛衣': 10, '電話': 20, '腳趾': 30})
+        with self.store.db() as db:
+            same=self.insert(db,'腳趾','jiǎo zhǐ','toe',topic='actions')
+            other=self.insert(db,'電話','diàn huà','person',topic='technology')
+            data=self.store._item(db,other['id'])
+            data['related_to']=['好']
+            db.execute('UPDATE items SET data=? WHERE id=?',(json.dumps(data,ensure_ascii=False),other['id']))
+            pool=self.store._candidate_pool(db,self.store._item(db,'好'),category_only=True)
+            self.assertIn(same['id'],[item['id'] for item in pool])
+            self.assertNotIn(other['id'],[item['id'] for item in pool])
+
+    def test_mastery_does_not_treat_custom_as_a_category(self):
+        self.store.vocabulary=VocabularyPolicy({'電話': 10})
+        with self.store.db() as db:
+            self.insert(db,'電話','diàn huà','telephone',topic='custom')
+            source=dict(self.store._item(db,'好'),topic='custom')
+            self.assertEqual(self.store._candidate_pool(db,source,category_only=True),[])
+
+    def test_mastery_dictionary_search_uses_full_category_keyword_list(self):
+        self.store.vocabulary=VocabularyPolicy({'電話': 100, '銀行': 200})
+        with self.store.db() as db:
+            db.execute('INSERT INTO dictionary(traditional,pinyin,meanings) VALUES (?,?,?)',
+                       ('電話','diàn huà',json.dumps(['apple'])))
+            db.execute('INSERT INTO dictionary(traditional,pinyin,meanings) VALUES (?,?,?)',
+                       ('銀行','yín háng',json.dumps(['computer apple'])))
+            source=dict(self.store._item(db,'好'),topic='food')
+            pool=self.store._candidate_pool(db,source,category_only=True)
+            self.assertEqual([item['text'] for item in pool],['電話'])
 
     def test_automatic_pool_passes_nonlinear_weights_to_sampler(self):
         self.store.vocabulary=VocabularyPolicy({'人':900,'大':100})

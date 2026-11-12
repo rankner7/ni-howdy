@@ -41,6 +41,10 @@ class LearningTests(unittest.TestCase):
         b = dict(a, level=1)
         self.assertEqual(weight(a), weight(b) * 2)
         self.assertEqual(weight(dict(a, attempts=3, boost=1)), 2)
+        self.assertEqual(weight(a, mode='flashcards'),
+                         weight(dict(a, level=1, attempts=1), mode='flashcards'))
+        self.assertEqual(weight(dict(a, attempts=1), mode='flashcards'), 1)
+        self.assertEqual(weight(a, mode='drawing'), 2)
 
     def test_daily_trials(self):
         rng = random.Random(2)

@@ -4,7 +4,7 @@ Automatic additions use measured word counts from Taiwan's National Academy for 
 
 ## Selection odds
 
-First mastery of a vocabulary item still triggers one expansion event, shared by flashcards and drawing. Up to two contextual neighbours are selected without replacement. Among eligible candidates:
+First mastery of a vocabulary item still triggers one expansion event, shared by flashcards and drawing. Up to two words in the mastered word’s category are selected without replacement. Unclassified `custom` words do not trigger automatic additions, because that label groups unrelated subjects. Among eligible candidates:
 
 ```text
 frequency = written-text occurrences + news occurrences
@@ -14,7 +14,11 @@ P(next addition = word) = word weight / sum(remaining eligible weights)
 
 A word with ten times the observed count has about 31.6 times the selection weight; one with 100 times the count has 1,000 times the weight. The exponent is set by `ADDITION_FREQUENCY_EXPONENT` in `nihowdy/vocabulary.py`. Displayed occurrence counts still use the raw counts. Multiple dictionary senses of the same written word do not create extra sampling tickets. An unattested word has zero automatic-addition weight; it remains available through manual lookup.
 
-Context still matters. The app uses topic relations and dictionary meanings to prepare the candidate pool, then applies frequency weights across the complete eligible pool. It no longer shuffles a small arbitrary dictionary subset first. Adjective matching does not confuse “good” with the noun “goods.” Rare attested vocabulary retains a small chance; frequency bias is not a guarantee that every suggestion will be useful to every learner.
+Automatic expansion selects catalog words with the same category and dictionary words whose leading meaning is classified into that category by local keyword rules, then applies frequency weights across the eligible pool.
+
+Everyday essentials is a curated beginner collection across subject categories, not an expansion category. Selecting the collection matches catalog membership; mastering a collection word expands its subject category. The same category definitions supply UI labels, dictionary classification, and category generation. Emotions and personality belong to People & relationships; physical sensations belong to Body & health. A versioned migration reclassifies saved words by their selected meaning (using curated categories for starter entries), including deleted entries, at startup and when importing older backups. It preserves IDs, progress, history, and explicitly named custom subjects. Unsupported meanings remain unclassified.
+
+Manual generation continues to use topic relations and dictionary meanings. It no longer shuffles a small arbitrary dictionary subset first. Adjective matching does not confuse “good” with the noun “goods.” Rare attested vocabulary retains a small chance; frequency bias is not a guarantee that every suggestion will be useful to every learner.
 
 Corpus counts describe written forms, not individual meanings. For new dictionary candidates, automatic generation requires the leading dictionary sense to match the topic; it does not search later senses for a convenient keyword. Annotated or complex leading senses are left for manual selection. Dictionary ordering is a conservative heuristic, not proof of everyday usage. Manual lookup still exposes all dictionary senses.
 

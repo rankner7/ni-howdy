@@ -6,6 +6,8 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import quote
 
+from .topics import TOPIC_KEYWORDS, infer_topic
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 DICTIONARY_VERSION = '3'
@@ -125,19 +127,3 @@ def component_groups(char, hanzi):
 
 def starter_items():
     return json.loads((DATA / "starter.json").read_text())
-
-
-def infer_topic(meanings):
-    """Conservative local semantic tags; unrelated words stay in custom."""
-    text = " ".join(meanings).lower()
-    groups = {
-        "clothing": ["clothes", "clothing", "shirt", "sweater", "sock", "jacket", "trousers", "pants", "shoe", "garment"],
-        "technology": ["computer", "keyboard", "software", "telephone", "mobile phone", "internet", "electric", "network", "printer"],
-        "food": ["food", "drink", "coffee", "tea", "milk", "rice", "bread", "fruit", "apple", "egg", "vegetable", "meat"],
-        "travel": ["train", "bus", "metro", "station", "ticket", "airport", "flight", "transport", "vehicle"],
-        "people": ["family", "friend", "student", "teacher", "school", "learn", "study", "book"],
-    }
-    scores = {topic:sum(bool(re.search(r"\b"+re.escape(word)+r"s?\b", text)) for word in words)
-              for topic, words in groups.items()}
-    best = max(scores, key=scores.get)
-    return best if scores[best] else "custom"

@@ -88,7 +88,7 @@ class RollingTests(unittest.TestCase):
         with self.store.db() as db:
             db.execute('UPDATE progress SET eligible_after=999')
         self.assertTrue(self.store.next_prompt('flashcards')['introduction'])
-        result = self.store.generate_entries({'source': 'category', 'category': 'essentials', 'count': 1})
+        result = self.store.generate_entries({'source': 'category', 'category': 'nature', 'count': 1})
         self.assertEqual([item['text'] for item in result['items']], ['一木'])
         with self.store.db() as db:
             db.execute("UPDATE prompts SET finished=1")

@@ -45,7 +45,9 @@ def transition(progress, correct, lowest, highest, today, guided=False):
     return p
 
 
-def weight(progress, lowest=0):
+def weight(progress, lowest=0, mode=None):
+    if mode == 'flashcards' and progress['attempts'] == 0 and progress['level'] == lowest:
+        return 0.5
     return (0.5 ** (progress["level"] - lowest)
             * (2 if progress["attempts"] == 0 else 1)
             * min(4, 2 ** progress["boost"]))
