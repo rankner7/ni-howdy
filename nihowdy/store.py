@@ -729,7 +729,16 @@ class Store:
                         else:
                             data = self.hanzi[plan["character"]]
                             reference = [[[x, 900-y] for x, y in data["medians"][j]] for j in plan["missing"]]
-                            details.append(shape_score(strokes, reference, normalize=prompt["level"]==4))
+                            grade = shape_score(strokes, reference, normalize=prompt['level']==4,
+                                                include_feedback=prompt['level'] in (3, 4))
+                            feedback = grade.pop('feedback', None)
+                            if feedback is not None:
+                                grade['overlay'] = {
+                                    'reference': data['strokes'], 'ink': feedback['ink'],
+                                    'incorrect_ink': feedback['incorrect_ink'],
+                                    'missing': [data['strokes'][plan['missing'][j]] for j in feedback['missing_strokes']],
+                                }
+                            details.append(grade)
                 correct = all(d["correct"] for d in details)
             else:
                 text = answer.get("text", "")

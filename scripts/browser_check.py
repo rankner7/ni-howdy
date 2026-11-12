@@ -196,6 +196,20 @@ def run():
                     page.get_by_role('button',name='Check entry' if index==len(plan['drawing'])-1 else 'Save character & continue').click()
                 page.wait_for_selector('.feedback.success')
 
+                # Both hardest levels keep a correction overlay after a miss.
+                for word,level,count in [('電腦',3,2),('一',4,1)]:
+                    configure(word,'drawing',level)
+                    navigate('drawing')
+                    for _ in range(count-1):
+                        page.get_by_role('button',name='Save character & continue').click()
+                    page.get_by_role('button',name='Check entry').click()
+                    page.wait_for_selector('.feedback.retry')
+                    assert page.locator('.drawing-comparison').count()==count
+                    assert page.locator('.comparison-missing path').count()>0
+                    assert page.locator('#answer-form').is_hidden()
+                    assert page.locator('.drawing-corrections').is_visible()
+                    page.screenshot(path=str(ROOT/f'artifacts/drawing-corrections-{level}.png'),full_page=True)
+
                 configure('一','drawing',4)
                 navigate('drawing')
                 page.wait_for_selector('canvas')

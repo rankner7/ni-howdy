@@ -107,7 +107,7 @@ def resample(strokes, spacing=12):
     return points
 
 
-def shape_score(drawn, reference, normalize=False):
+def shape_score(drawn, reference, normalize=False, include_feedback=False):
     """Order/direction-independent geometry match in a 1024-unit drawing box.
 
     Symmetric coverage penalizes omissions AND extra ink. Per-reference-stroke
@@ -130,8 +130,6 @@ def shape_score(drawn, reference, normalize=False):
                 drawn = [[[(x-cx)*scale+tx,(y-cy)*scale+ty] for x,y in s] for s in drawn]
     ink = resample(drawn)
     target = resample(reference)
-    if len(ink) < 3 or not target:
-        return {"correct": False, "coverage": 0, "precision": 0}
     radius2 = 58 ** 2
 
     def coverage(a, b):
@@ -140,9 +138,32 @@ def shape_score(drawn, reference, normalize=False):
 
     recall = coverage(target, ink)
     precision = coverage(ink, target)
-    weakest = min(coverage(resample([s]), ink) for s in reference)
-    return {"correct": recall >= .84 and precision >= .80 and weakest >= .65,
-            "coverage": round(recall, 3), "precision": round(precision, 3)}
+    stroke_coverage = [coverage(resample([s]), ink) for s in reference]
+    sufficient = len(ink) >= 3 and bool(target)
+    result = {"correct": sufficient and recall >= .84 and precision >= .80 and min(stroke_coverage, default=0) >= .65,
+              "coverage": round(recall, 3) if sufficient else 0,
+              "precision": round(precision, 3) if sufficient else 0}
+    if include_feedback and not result['correct']:
+        # Use exactly the aligned ink and tolerance used for grading. Group
+        # nearby unmatched samples so the overlay can mark just the extra ink.
+        incorrect_ink = []
+        for stroke in drawn:
+            points = resample([stroke])
+            run = []
+            for point in points:
+                near = any(math.dist(point, expected) <= 58 for expected in target)
+                if not near:
+                    run.append(point)
+                elif run:
+                    incorrect_ink.append(run)
+                    run = []
+            if run:
+                incorrect_ink.append(run)
+        result['feedback'] = {
+            'ink': drawn, 'incorrect_ink': incorrect_ink,
+            'missing_strokes': [i for i, score in enumerate(stroke_coverage) if score < .84],
+        }
+    return result
 
 
 def guided_stroke_correct(stroke, target):
