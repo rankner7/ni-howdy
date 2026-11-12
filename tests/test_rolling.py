@@ -39,6 +39,7 @@ class RollingTests(unittest.TestCase):
                 prompt = self.store.next_prompt(mode)
                 self.assertTrue(prompt['introduction'])
                 self.assertEqual(prompt['item']['text'], '木')
+                self.assertEqual(self.store.audio_item(prompt['id'])['text'], '木')
                 self.assertIn('characters', prompt['item'])
                 self.assertEqual(self.store.next_prompt(mode), prompt)
                 self.assertFalse(self.store.info(prompt['id'])['penalty'])

@@ -34,7 +34,8 @@ export async function practice(mode, state, onUpdate, addExample) {
     if(prompt.empty){card.innerHTML=`<div class="empty-state"><span class="empty-symbol">${mode==='phrases'?'語':'✧'}</span><h2>${mode==='phrases'?'First, give your words a foundation.':'A good place to pause.'}</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#mastered'}">${mode==='phrases'?'Practise vocabulary':'Visit your mastered bin'} →</a></div>`;return;}
     if(prompt.introduction){
       drawing?.dispose?.();drawing=null;
-      card.innerHTML=`<div class="notice"><strong>✧ New word added</strong><p>Meet this word before practising ${mode==='drawing'?'drawing':'flashcards'}. Take your time with its meaning and construction.</p></div>${infoContent(prompt.item)}<form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p class="fine-print">Press Enter to continue · no answer needed</p><p id="practice-error" class="error" role="alert"></p></form>`;
+      card.innerHTML=`<div class="notice"><strong>✧ New word added</strong><p>Meet this word before practising ${mode==='drawing'?'drawing':'flashcards'}. Take your time with its meaning and construction.</p></div>${infoContent(prompt.item)}<button type="button" class="audio-button" aria-label="Play Mandarin pronunciation"><span>▶</span> Listen</button><p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p class="fine-print">Press Enter to continue · no answer needed</p><p id="practice-error" class="error" role="alert"></p></form>`;
+      setupAudio(card);
       $('#introduction-form',card).onsubmit=async event=>{
         event.preventDefault();if(busy)return;
         busy=true;const button=$('.continue-introduction',card);button.disabled=true;
@@ -73,12 +74,15 @@ export async function practice(mode, state, onUpdate, addExample) {
       input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
       if(isChinese)setupIME();
     }
+    setupAudio(card);
+    $('#answer-form').onsubmit=submit;
+  }
+  function setupAudio(card){
     const audioButton=$('.audio-button',card);
     if(audioButton){
       audioButton.onclick=()=>play(audioButton);
       autoplayTimer=setTimeout(()=>{if(isCurrent(audioButton))play(audioButton);},500);
     }
-    $('#answer-form').onsubmit=submit;
   }
   async function play(button){
     clearTimeout(autoplayTimer);

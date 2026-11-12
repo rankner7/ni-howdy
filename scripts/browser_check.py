@@ -327,6 +327,15 @@ def run():
                 assert page.locator('.word-card').count()==2
                 assert set(page.locator('.word-glyph').all_text_contents())=={'手','腦'}
                 assert set(page.locator('.word-card .pill').all_text_contents())=={'Body & health'}
+                library_items=page.request.get(base+'/api/state').json()['items']
+                for status in ('mastered', 'unmastered'):
+                    page.locator('#status-filter').select_option(status)
+                    expected={i['text'] for i in library_items if i['kind']=='word' and i['topic']=='health'
+                              and (any(p['status'] in ('mastered','review') for p in i['progress'])
+                                   if status=='mastered' else i['enrolled'] and not any(
+                                       p['status'] in ('mastered','review') for p in i['progress']))}
+                    assert set(page.locator('.word-glyph').all_text_contents())==expected
+                page.locator('#status-filter').select_option('all')
                 page.locator('#category-filter').select_option('essentials')
                 assert page.locator('.word-card').count()>=17
                 assert 'Everyday essentials' not in page.locator('.word-card .pill').all_text_contents()

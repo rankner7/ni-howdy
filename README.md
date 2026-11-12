@@ -7,10 +7,6 @@ A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional 
  - chart showing mastery over time with relative learning levels like 1st grade, second grade, etc for vocab
      - similar chart for phrases
  
-## Fixes
- - word library should have way to filter by mastered and/or category
-
-
 ## Run locally
 
 Requires Python 3.11+ and a modern browser. No Node.js or database server is needed.
