@@ -786,6 +786,21 @@ class Store:
                 raise ValueError('Audio is unavailable for Hard phrase practice.')
             return self._item(db, prompt["item_id"])
 
+    def word_examples(self, item_id):
+        with self.db() as db:
+            item = self._item(db, item_id)
+            if item['kind'] != 'word':
+                return []
+            items = self._items(db)
+        words = {key for key, value in items.items() if value['kind'] == 'word'}
+        examples = []
+        for phrase in islice(phrase_candidates(items, words), 50000):
+            if phrase and item_id in phrase['tokens']:
+                examples.append({key: phrase[key] for key in ('text', 'pinyin', 'english')})
+                if len(examples) == 3:
+                    break
+        return examples
+
     def item(self, item_id):
         with self.db() as db:
             return self._item(db, item_id)

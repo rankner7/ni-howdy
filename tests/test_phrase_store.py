@@ -31,6 +31,16 @@ class PhraseStoreTests(unittest.TestCase):
                 db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,'flashcards',2)", (word,))
                 db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode='flashcards'", (word,))
 
+    def test_word_examples_are_contextual_and_do_not_change_progress(self):
+        before = self.store.backup()
+        examples = self.store.word_examples('茶')
+        self.assertEqual(len(examples), 3)
+        for example in examples:
+            self.assertIn('茶', example['text'])
+            self.assertTrue(example['pinyin'])
+            self.assertTrue(example['english'])
+        self.assertEqual(self.store.backup(), before)
+
     def test_hidden_queue_and_mastered_history_survive_restart_and_backup(self):
         self.master('我', '你', '要', '也', '喝', '水', '茶', '喜歡')
         prompt = self.store.next_prompt('phrases')

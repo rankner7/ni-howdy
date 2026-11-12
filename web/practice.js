@@ -1,4 +1,4 @@
-import {$, $$, api, escape, modal, toast, showInfo, infoContent, pageHeader, glyphSVG} from './ui.js';
+import {$, $$, api, escape, modal, toast, showInfo, infoContent, loadExamples, pageHeader, glyphSVG} from './ui.js';
 import {Drawing} from './drawing.js';
 import {drawingFeedback} from './drawing-feedback.js';
 
@@ -36,6 +36,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       drawing?.dispose?.();drawing=null;
       card.innerHTML=`<div class="notice"><strong>✧ New word added</strong><p>Meet this word before practising ${mode==='drawing'?'drawing':'flashcards'}. Take your time with its meaning and construction.</p></div>${infoContent(prompt.item)}<button type="button" class="audio-button" aria-label="Play Mandarin pronunciation"><span>▶</span> Listen</button><p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p class="fine-print">Press Enter to continue · no answer needed</p><p id="practice-error" class="error" role="alert"></p></form>`;
       setupAudio(card);
+      loadExamples(prompt.item, card);
       $('#introduction-form',card).onsubmit=async event=>{
         event.preventDefault();if(busy)return;
         busy=true;const button=$('.continue-introduction',card);button.disabled=true;

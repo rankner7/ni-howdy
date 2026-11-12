@@ -49,12 +49,24 @@ export function infoContent(item, options={}) {
     <p class="fine-print">${escape(item.explanation_origin)}</p>
     <div class="character-notes">${(item.characters||[]).map(c => `<article><span class="note-glyph" lang="zh-Hant">${escape(c.character)}</span><div><strong>${escape(c.definition)}</strong><p>${escape(c.note)}</p><small>Construction: ${escape(c.decomposition || 'Not available')}</small></div></article>`).join('')}</div>
     <div class="accepted"><span class="eyebrow">ACCEPTED ENGLISH</span><p>${item.answers.map(escape).join(' · ')}</p></div>
+    ${item.kind==='word'?'<section class="context-examples"><span class="eyebrow">EXAMPLE PHRASES</span><p>Finding examples…</p></section>':''}
     <div class="source-links">${sourceLinks(item.sources)}</div>
     ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}`;
 }
 
+export async function loadExamples(item, root) {
+  const section=$('.context-examples', root);
+  if(!section)return;
+  try {
+    const {examples}=await api('word-examples',{id:item.id});
+    if(!section.isConnected)return;
+    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}</p>`).join(''):'<p>No examples are available for this word yet.</p>');
+  } catch { if(section.isConnected)section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span><p>Examples are currently unavailable.</p>'; }
+}
+
 export function showInfo(item, options={}) {
   const dialog = modal('A closer look', infoContent(item, options), true);
+  loadExamples(item, dialog);
   if (options.generate) $('.generate-explanation', dialog).onclick = async event => {
     const button = event.currentTarget; button.disabled = true; button.textContent = 'Preparing explanation…';
     try { const result = await api('explain',{id:item.id}); showInfo(result.item); toast('Explanation saved locally.'); }

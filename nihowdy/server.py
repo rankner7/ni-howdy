@@ -109,6 +109,8 @@ class Handler(BaseHTTPRequestHandler):
                 result = store.answer(body.get("id"), body)
             elif path == "/api/info":
                 result = store.info(body.get("id"))
+            elif path == "/api/word-examples":
+                result = {"examples": store.word_examples(body.get("id"))}
             elif path == "/api/settings":
                 result = store.update_settings(body)
             elif path == "/api/add":
