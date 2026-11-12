@@ -79,8 +79,8 @@ class StoredFeedbackTests(unittest.TestCase):
                                            for j in p['missing']]} for p in plans]}
         return prompt, plans, answer
 
-    def test_two_hardest_levels_reveal_only_incorrect_characters(self):
-        for level in (3, 4):
+    def test_shape_levels_reveal_only_incorrect_characters(self):
+        for level in (2, 3, 4):
             with self.subTest(level=level):
                 prompt, plans, answer = self.answer_for(level)
                 self.assertNotIn('overlay', prompt['characters'][0])
@@ -96,12 +96,17 @@ class StoredFeedbackTests(unittest.TestCase):
                 self.assertEqual(bad['overlay']['ink'], [])
                 self.assertEqual(self.store.answer(prompt['id'], answer), result)
 
-    def test_easier_missing_stroke_level_has_no_overlay(self):
-        prompt, _, answer = self.answer_for(2)
+    def test_easy_overlay_highlights_only_strokes_the_learner_must_add(self):
+        prompt, plans, answer = self.answer_for(2)
         answer['drawings'][0]['strokes'] = []
         result = self.store.answer(prompt['id'], answer)
         self.assertFalse(result['correct'])
-        self.assertNotIn('overlay', result['details'][0])
+        overlay = result['details'][0]['overlay']
+        paths = self.store.hanzi[plans[0]['character']]['strokes']
+        self.assertEqual(overlay['reference'], paths)
+        self.assertEqual(overlay['missing'], [paths[j] for j in plans[0]['missing']])
+        self.assertTrue(overlay['missing'])
+        self.assertTrue(all(path not in overlay['missing'] for path in plans[0]['template']))
 
     def test_hint_penalty_does_not_mark_correct_drawing_as_wrong(self):
         prompt, _, answer = self.answer_for(4)

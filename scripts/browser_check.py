@@ -196,8 +196,8 @@ def run():
                     page.get_by_role('button',name='Check entry' if index==len(plan['drawing'])-1 else 'Save character & continue').click()
                 page.wait_for_selector('.feedback.success')
 
-                # Both hardest levels keep a correction overlay after a miss.
-                for word,level,count in [('電腦',3,2),('一',4,1)]:
+                # Missing-stroke and free-drawing levels show corrections after a miss.
+                for word,level,count in [('電腦',2,2),('電腦',3,2),('一',4,1)]:
                     configure(word,'drawing',level)
                     navigate('drawing')
                     for _ in range(count-1):

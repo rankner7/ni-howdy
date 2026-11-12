@@ -110,7 +110,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       const result=await api('answer',payload);
       $('#answer-form').hidden=true;
       $('#feedback').innerHTML=`<div class="feedback ${result.correct?'success':'retry'}"><span class="feedback-symbol">${result.correct?'✓':'↻'}</span><div><h3>${result.correct?'That’s right.':result.hint?'A little context goes a long way.':'Keep going. You’re learning.'}</h3><p>${escape(result.message)}</p><div class="answer-reveal"><span lang="zh-Hant">${escape(result.item.text)}</span> <small>${escape(result.item.pinyin)}</small><p>${result.item.answers.map(escape).join(' / ')}</p></div>${result.details.length?`<p class="fine-print">${result.details.map((d,i)=>`Character ${prompt.characters[i].index+1}: ${d.correct?'✓ recognised':'try again'}`).join(' · ')}</p>`:''}${result.added.length?`<p>Discovered for your next session: <strong>${result.added.map(escape).join(' · ')}</strong></p>`:''}<button class="text-button after-info">Explore the meaning ↗</button></div></div><button class="primary next-prompt">Next prompt →</button>`;
-      if(mode==='drawing'&&prompt.level>=3){
+      if(mode==='drawing'&&prompt.level>=2){
         $('.next-prompt').insertAdjacentHTML('beforebegin',drawingFeedback(result.details,prompt.characters,result.item.text));
       }
       $('.after-info').onclick=()=>showInfo(result.item);
