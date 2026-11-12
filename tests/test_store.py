@@ -10,6 +10,13 @@ from nihowdy.store import Store
 
 
 class StoreTests(unittest.TestCase):
+    def next_prompt(self, mode):
+        prompt = self.store.next_prompt(mode)
+        while prompt.get('introduction'):
+            self.store.answer(prompt['id'], {'continue': True})
+            prompt = self.store.next_prompt(mode)
+        return prompt
+
     @classmethod
     def setUpClass(cls):
         cls.hanzi = load_hanzi()
@@ -33,7 +40,7 @@ class StoreTests(unittest.TestCase):
 
     def test_hint_and_resubmission_score_once(self):
         self.only()
-        prompt = self.store.next_prompt('flashcards')
+        prompt = self.next_prompt('flashcards')
         self.store.info(prompt['id'])
         self.store.info(prompt['id'])
         result = self.store.answer(prompt['id'], {'text':'computer'})
@@ -44,14 +51,12 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT COUNT(*) FROM attempts').fetchone()[0], 1)
             self.assertEqual(db.execute('SELECT failures FROM progress').fetchone()[0], 1)
 
-    def test_mastery_expands_once_and_defers(self):
+    def test_mastery_expands_once_and_joins_rolling_shuffle(self):
         self.only(level=2)
-        p = self.store.next_prompt('flashcards')
+        p = self.next_prompt('flashcards')
         result = self.store.answer(p['id'], {'text':'computer'})
         self.assertEqual(len(result['added']), 2)
-        self.assertTrue(self.store.next_prompt('flashcards')['empty'])
-        self.store.new_session()
-        self.assertFalse(self.store.next_prompt('flashcards').get('empty', False))
+        self.assertFalse(self.next_prompt('flashcards').get('empty', False))
         with self.store.db() as db:
             self.store._enroll(db, '電腦')
             self.assertEqual(self.store._expand(db, self.store._item(db,'電腦'), 2), [])
@@ -59,7 +64,7 @@ class StoreTests(unittest.TestCase):
 
     def test_reviews_never_reroll(self):
         self.only(level=2)
-        prompt = self.store.next_prompt('flashcards')
+        prompt = self.next_prompt('flashcards')
         self.store.answer(prompt['id'], {'text':'computer'})
         self.store.update_settings({'probability':0})
         self.day = datetime(2026, 11, 12, 17, tzinfo=timezone.utc)
@@ -77,35 +82,35 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT status FROM progress WHERE item_id='電腦'").fetchone()[0], 'review')
 
     def test_phrase_union_mastery_and_gate(self):
-        self.assertTrue(self.store.next_prompt('phrases')['empty'])
+        self.assertTrue(self.next_prompt('phrases')['empty'])
         with self.store.db() as db:
             for word, mode in [('我','flashcards'),('也','drawing'),('要','flashcards'),('喝','drawing')]:
                 db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(word,mode))
-        self.assertTrue(self.store.next_prompt('phrases')['empty'])
+        self.assertTrue(self.next_prompt('phrases')['empty'])
         with self.store.db() as db:
             db.execute("UPDATE progress SET status='review' WHERE item_id='茶' AND mode='drawing'")
-        self.assertFalse(self.store.next_prompt('phrases').get('empty', False))
+        self.assertFalse(self.next_prompt('phrases').get('empty', False))
 
     def test_prompt_recovery_and_characters_only(self):
         self.only(level=2)
-        p = self.store.next_prompt('flashcards')
+        p = self.next_prompt('flashcards')
         self.assertEqual(p['text'], '電腦')
         self.assertNotIn('pinyin',p)
         self.assertNotIn('english',p)
-        self.assertEqual(self.store.next_prompt('flashcards')['id'], p['id'])
+        self.assertEqual(self.next_prompt('flashcards')['id'], p['id'])
 
     def test_hard_flashcards_reject_other_homophone_meanings(self):
         self.only(level=2)
         with self.store.db() as db:
             other = dict(self.store._item(db, '電腦'), id='homophone', text='同音', answers=['unrelated meaning'])
             db.execute('INSERT INTO items VALUES (?,?)', (other['id'], json.dumps(other)))
-        prompt = self.store.next_prompt('flashcards')
+        prompt = self.next_prompt('flashcards')
         result = self.store.answer(prompt['id'], {'text': 'unrelated meaning'})
         self.assertFalse(result['correct'])
 
     def test_drawing_no_ink_fails(self):
         self.only('一','drawing',2)
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         result = self.store.answer(prompt['id'], {'drawings':[{'strokes':[]}]})
         self.assertFalse(result['correct'])
 

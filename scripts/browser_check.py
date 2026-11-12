@@ -77,6 +77,15 @@ def run():
                     page.wait_for_timeout(250)
                     if page.locator('dialog[open]').count():
                         page.get_by_role('button',name='Got it. Let’s practise').click()
+                    if page.locator('.continue-introduction').count():
+                        assert 'New word added' in page.locator('#practice-card').inner_text()
+                        assert page.locator('#answer').count()==0
+                        assert page.locator('#drawing-area').count()==0
+                        before=store.state()['stats']['attempts']
+                        page.keyboard.press('Enter')
+                        page.wait_for_selector('.continue-introduction',state='detached')
+                        assert store.state()['stats']['attempts']==before
+                    assert page.locator('.new-session').count()==0
 
                 configure('電腦','flashcards',0)
                 navigate('flashcards')
@@ -287,25 +296,13 @@ def run():
                 navigate('mastered')
                 assert '我也要喝茶' not in page.locator('#main').inner_text()
                 navigate('library')
-                # Explicit requests for compounds wait for all meaningful parts.
+                # Compound requests join both decks without learning their parts first.
                 page.get_by_role('button',name='Add an example').click()
                 page.locator('#entry-search').fill('毛衣')
                 page.wait_for_selector('.add-result')
                 page.locator('.add-result').first.click()
-                page.locator('.add-result').filter(has_text='Waiting for prerequisites').first.wait_for()
+                page.locator('.add-result').filter(has_text='Added').first.wait_for()
                 page.get_by_role('button',name='Close dialog').click()
-                navigate('library')
-                sweater=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$')))
-                assert 'Waiting to join your deck' in sweater.inner_text()
-                sweater.get_by_role('button',name='Add prerequisite words').click()
-                page.wait_for_timeout(250)
-                assert page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$'))).get_by_role('button',name='Waiting for prerequisites').is_disabled()
-                with store.db() as db:
-                    for row in db.execute('SELECT id,data FROM items').fetchall():
-                        item=json.loads(row['data'])
-                        if item['text'] in ['毛','衣']:
-                            mode='flashcards' if item['text']=='毛' else 'drawing'
-                            db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode=?",(row['id'],mode))
                 navigate('library')
                 sweater=page.locator('.word-card').filter(has=page.locator('.word-glyph',has_text=re.compile('^毛衣$')))
                 assert sweater.locator('.word-progress>span').count()==2

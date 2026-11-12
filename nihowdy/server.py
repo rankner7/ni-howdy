@@ -118,8 +118,6 @@ class Handler(BaseHTTPRequestHandler):
                         self.server.content.explain(result["item"]["id"])
                     except Exception:
                         result["message"] += " Explanation generation is pending; retry from the library."
-            elif path == '/api/add-prerequisites':
-                result=store.add_prerequisites(body.get('id'))
             elif path == '/api/delete-entries':
                 result=store.delete_entries(body.get('ids'))
             elif path == '/api/restore-entries':
@@ -167,10 +165,10 @@ def main():
         server.audio = Audio(directory)
         server.content = ContentService(store)
         server.proofreader = proofreader
-        print(f"Ni-howdy is ready: http://localhost:{args.port}\nPress Ctrl+C to stop.", flush=True)
+        print(f"你howdy is ready: http://localhost:{args.port}\nPress Ctrl+C to stop.", flush=True)
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nNi-howdy stopped. Run ./run.sh to start again.", flush=True)
+        print("\n你howdy stopped. Run ./run.sh to start again.", flush=True)
     finally:
         if server is not None:
             server.server_close()

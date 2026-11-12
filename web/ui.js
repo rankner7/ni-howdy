@@ -40,16 +40,21 @@ export function sourceLinks(sources=[]) {
   return sources.filter(s => /^https:\/\//.test(s.url)).map(s => `<a href="${escape(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.title)} ↗</a>`).join('');
 }
 
-export function showInfo(item, options={}) {
-  const dialog = modal('A closer look', `
+export function infoContent(item, options={}) {
+  return `
     ${options.penalty ? '<div class="notice amber">One incorrect attempt recorded. You can still finish this prompt for practice.</div>' : ''}
     <div class="entry-heading"><span lang="zh-Hant">${escape(item.text)}</span><div><p>${escape(item.pinyin)}</p><h3>${escape(item.english)}</h3></div></div>
+    ${item.usage_note?`<p class="explanation">${escape(item.usage_note)}</p>`:''}
     <p class="explanation">${escape(item.explanation)}</p>
     <p class="fine-print">${escape(item.explanation_origin)}</p>
     <div class="character-notes">${(item.characters||[]).map(c => `<article><span class="note-glyph" lang="zh-Hant">${escape(c.character)}</span><div><strong>${escape(c.definition)}</strong><p>${escape(c.note)}</p><small>Construction: ${escape(c.decomposition || 'Not available')}</small></div></article>`).join('')}</div>
     <div class="accepted"><span class="eyebrow">ACCEPTED ENGLISH</span><p>${item.answers.map(escape).join(' · ')}</p></div>
     <div class="source-links">${sourceLinks(item.sources)}</div>
-    ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}`, true);
+    ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}`;
+}
+
+export function showInfo(item, options={}) {
+  const dialog = modal('A closer look', infoContent(item, options), true);
   if (options.generate) $('.generate-explanation', dialog).onclick = async event => {
     const button = event.currentTarget; button.disabled = true; button.textContent = 'Preparing explanation…';
     try { const result = await api('explain',{id:item.id}); showInfo(result.item); toast('Explanation saved locally.'); }

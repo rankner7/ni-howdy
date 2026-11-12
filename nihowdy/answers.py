@@ -1,10 +1,43 @@
-"""Conservative, offline equivalences for English sentence translations.
+"""Conservative dictionary answer aliases and English sentence equivalences.
 
 Keep this separate from strict word/sense identity and Chinese composition.
 Rules must preserve content words, negation, tense, and subject agreement.
 """
 import re
 import unicodedata
+
+from .glosses import parse_gloss
+
+
+def with_word_answers(item):
+    """Apply one gloss policy to saved, generated, and newly added word cards."""
+    if item.get('kind') != 'word':
+        return item
+    sources = item.get('answer_sources', item['answers'])
+    if not sources:
+        return item
+    # Recompute inferred aliases from authoritative sources so a future policy
+    # correction cannot leave an obsolete generated answer in saved cards.
+    answers = list(sources)
+    for answer in sources:
+        for alias in parse_gloss(answer, chinese=item.get('text', '')).translations:
+            if alias and alias not in answers:
+                answers.append(alias)
+    primary = parse_gloss(item.get('english', sources[0]), chinese=item.get('text', ''))
+    if answers == item['answers'] and primary.translations == (primary.raw,) and not primary.notes:
+        return item
+    updated = dict(item, answers=answers, answer_sources=list(sources),
+                   dictionary_gloss=dict(policy_version=1, raw=primary.raw,
+                                         translations=list(primary.translations),
+                                         notes=list(primary.notes), uncertain=primary.uncertain))
+    return updated if updated != item else item
+
+
+def word_sense_matches(item, sense):
+    """Sense identity uses source answers, never inferred grading aliases."""
+    key = unicodedata.normalize('NFC', sense.strip()).casefold()
+    sources = [item['english'], *item.get('answer_sources', item['answers'])]
+    return any(key == unicodedata.normalize('NFC', source.strip()).casefold() for source in sources)
 
 
 # Only unambiguous contractions: 's and 'd need grammatical context.

@@ -8,6 +8,14 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
+DICTIONARY_VERSION = '3'
+LEGACY_AND_GLOSS = '(joining two nouns) and; together with; with (Taiwan pr. [han4])'
+AND_USAGE = (
+    '和 joins nouns: 蘋果和蛋 means apples and eggs. Hé and hàn are both used; '
+    'hàn is a Taiwan pronunciation. 和 can also mean with in the pattern '
+    '和……一起 (together with someone). It does not generally join complete clauses.'
+)
+AND_SOURCE = 'https://tocfl.edu.tw/assets/files/epaper/epaper87.pdf'
 
 
 def load_hanzi():
@@ -38,6 +46,31 @@ def tone_pinyin(text):
     return re.sub(r"([A-Za-züÜ:]+)([1-5])", convert, text)
 
 
+def dictionary_readings(traditional, reading, definitions):
+    """Keep inline pronunciation notes scoped to their own dictionary sense."""
+    parts = definitions.split('/')
+    regional = next((match for part in parts
+                     if (match := re.fullmatch(r'Taiwan pr\. \[([^]]+)\]', part))), None)
+    default = regional[1] if regional else reading
+    groups = {}
+    for sense in parts:
+        if re.match(r'(CL:|variant of|old variant|see |surname |Taiwan pr\.)', sense):
+            continue
+        if traditional == '和' and reading.lower() == 'he2' and sense == LEGACY_AND_GLOSS:
+            # Both readings are documented by Taiwan's TOCFL/NAER materials.
+            # Put the common hé entry first, with plain selectable meanings.
+            for pronunciation in ('he2', 'han4'):
+                groups.setdefault(pronunciation, []).extend(['and', 'together with', 'with'])
+            continue
+        annotation = re.search(r'Taiwan pr\. \[([^]]+)\]', sense)
+        pronunciation = annotation[1] if annotation else default
+        if annotation:
+            sense = re.sub(r'\s*\(?Taiwan pr\. \[[^]]+\]\)?', '', sense).strip()
+        if sense:
+            groups.setdefault(pronunciation, []).append(sense)
+    return groups.items()
+
+
 def dictionary_rows():
     with gzip.open(DATA / "cedict.txt.gz", "rt", encoding="utf-8") as f:
         for line in f:
@@ -45,15 +78,9 @@ def dictionary_rows():
             if not match:
                 continue
             traditional, simplified, reading, definitions = match.groups()
-            taiwan = re.search(r"Taiwan pr\. \[([^]]+)\]", definitions)
-            if taiwan:
-                reading = taiwan.group(1)
-            # References and classifiers are not English answers.
-            meanings = [d for d in definitions.split("/") if not
-                        re.match(r"(CL:|variant of|old variant|see |surname |Taiwan pr\.)", d)]
-            if meanings:
-                yield (traditional, simplified, tone_pinyin(reading),
-                       plain_pinyin(reading), json.dumps(meanings, ensure_ascii=False))
+            for pronunciation, meanings in dictionary_readings(traditional, reading, definitions):
+                yield (traditional, simplified, tone_pinyin(pronunciation),
+                       plain_pinyin(pronunciation), json.dumps(meanings, ensure_ascii=False))
 
 
 def sources_for(text):

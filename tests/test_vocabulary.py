@@ -3,15 +3,39 @@ import random
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from nihowdy.content import load_hanzi
 from nihowdy.learning import weighted_sample
 from nihowdy.store import Store
 from nihowdy.vocabulary import VocabularyPolicy, frequency_data
 
 
 class VocabularyPolicyTests(unittest.TestCase):
+    def test_nonlinear_weights_preserve_raw_counts_and_exclude_unattested(self):
+        policy=VocabularyPolicy({'common':10000,'rare':1000,'zero':0})
+        self.assertEqual(policy.frequency_count('common'),10000)
+        self.assertEqual(policy.frequency_count('rare'),1000)
+        self.assertAlmostEqual(policy.addition_weight('common') / policy.addition_weight('rare'),
+                               10 ** 1.5)
+        for word in ('zero','missing'):
+            self.assertEqual(policy.frequency_count(word),0)
+            self.assertEqual(policy.addition_weight(word),0)
+
+    def test_shared_addition_selector_uses_nonlinear_weights(self):
+        # This draw would pick the rare word under linear weighting (90/10),
+        # but picks the common word under frequency^1.5 (about 96.4/3.6).
+        store=Store.__new__(Store)
+        store.vocabulary=VocabularyPolicy({'common':900,'rare':100})
+        common=dict(id='common',text='common')
+        rare=dict(id='rare',text='rare')
+        store._candidate_pool=Mock(return_value=[common,rare])
+        store._enroll=Mock()
+        store.rng=Mock()
+        store.rng.random.return_value=.95
+        db=Mock()
+        self.assertEqual(store._select_entries(db,{},1,after=3),[common])
+        store._enroll.assert_called_once_with(db,'common')
+
     def test_sampling_odds_follow_actual_weights(self):
         class GridRandom:
             def __init__(self):
@@ -35,35 +59,25 @@ class VocabularyPolicyTests(unittest.TestCase):
         self.assertGreater(data['counts']['茶'],data['counts']['有備無患'])
         self.assertEqual(VocabularyPolicy().addition_weight('未收錄的測試用詞'),0)
 
-    def test_meaningful_parts_and_suffix_exceptions(self):
-        policy=VocabularyPolicy()
-        def lookup(text,pinyin):
-            return dict(text=text,pinyin=pinyin,english=text,id=text)
-        parts=policy.parts({'text':'大腳趾','pinyin':'dà jiǎo zhǐ','kind':'word'},lookup)
-        self.assertEqual([(p['text'],p['pinyin']) for p in parts],[('大','dà'),('腳趾','jiǎo zhǐ')])
-        self.assertEqual([p['text'] for p in policy.parts({'text':'襪子','pinyin':'wà zi','kind':'word'},lookup)],['襪'])
-        self.assertEqual(policy.parts({'text':'咖啡','pinyin':'kā fēi','kind':'word'},lookup),[])
-
-    def test_inference_prefers_attested_longer_words(self):
-        counts={'小':500,'腳趾':50,'小腳':1,'趾':1,'腳':20}
-        def lookup(text,pinyin):
-            return dict(text=text,pinyin=pinyin,english=text,id=text) if text in counts else None
-        parts=VocabularyPolicy(counts).parts({'text':'小腳趾','pinyin':'xiǎo jiǎo zhǐ','kind':'word'},lookup)
-        self.assertEqual([p['text'] for p in parts],['小','腳趾'])
-
 
 class VocabularyAdmissionTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.hanzi=load_hanzi()
-
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
-        with patch('nihowdy.store.load_hanzi',return_value=self.hanzi):
-            self.store=Store(Path(self.tmp.name)/'test.sqlite',random.Random(8))
+        self.addCleanup(self.tmp.cleanup)
+        self.path=Path(self.tmp.name)/'test.sqlite'
+        # Small explicit fixtures keep admission tests independent of corpus files.
+        forms='我 你 也 要 喝 水 茶 好 一 二 三 電腦 電 腦 人 大 毛衣 毛 衣'.split()
+        self.items=[dict(id=text,kind='word',text=text,pinyin=text,english=text,
+                         answers=[text],chinese_answers=[text],topic='essentials',tokens=[])
+                    for text in forms]
+        self.hanzi={c:{} for c in ''.join(forms)+'腳趾銀行電話'}
+        self.store=self.open_store()
 
-    def tearDown(self):
-        self.tmp.cleanup()
+    def open_store(self):
+        with patch('nihowdy.store.load_hanzi',return_value=self.hanzi), \
+             patch('nihowdy.store.starter_items',return_value=self.items), \
+             patch('nihowdy.store.VocabularyPolicy',return_value=VocabularyPolicy({})):
+            return Store(self.path,random.Random(8))
 
     def insert(self,db,text,pinyin,english,topic='essentials'):
         item=dict(self.store._item(db,'茶'),id='test:'+text+':'+pinyin,text=text,
@@ -71,67 +85,103 @@ class VocabularyAdmissionTests(unittest.TestCase):
         db.execute('INSERT INTO items VALUES (?,?)',(item['id'],json.dumps(item,ensure_ascii=False)))
         return item
 
-    def master(self,db,item,mode='flashcards'):
-        db.execute("INSERT OR REPLACE INTO progress(item_id,mode,level,status) VALUES (?,?,2,'review')",(item['id'],mode))
-
-    def test_compound_waits_for_all_parts_across_both_skills(self):
-        result=self.store.add({'source':'catalog','id':'電腦'})
-        self.assertTrue(result['queued'])
-        self.assertEqual({p['text'] for p in result['missing_prerequisites']},{'電','腦'})
+    def assert_enrolled(self,item_id,after=0):
         with self.store.db() as db:
-            self.master(db,self.store._item(db,'電'))
-        state=self.store.state()
-        computer=next(i for i in state['items'] if i['id']=='電腦')
-        self.assertTrue(computer['waiting'])
-        self.assertEqual([p['text'] for p in computer['missing_prerequisites']],['腦'])
-        with self.store.db() as db:
-            self.master(db,self.store._item(db,'腦'),'drawing')
-        computer=next(i for i in self.store.state()['items'] if i['id']=='電腦')
-        self.assertTrue(computer['enrolled'])
-        self.assertFalse(computer['waiting'])
-        self.assertEqual({p['mode'] for p in computer['progress']},{'flashcards','drawing'})
+            progress=list(db.execute('SELECT * FROM progress WHERE item_id=?',(item_id,)))
+        self.assertEqual({p['mode'] for p in progress},{'flashcards','drawing'})
+        self.assertTrue(all(p['status']=='active' and p['eligible_after']==after for p in progress))
 
-    def test_automatic_addition_excludes_locked_compound(self):
+    def queue_legacy_word(self):
+        with self.store.db() as db:
+            db.execute("DELETE FROM progress WHERE item_id='電腦'")
+            db.execute("UPDATE items SET data=json_set(data,'$.requested',json('true')) WHERE id='電腦'")
+
+    def test_starter_compound_enrolls_without_adding_component_cards(self):
+        self.assert_enrolled('電腦')
+        with self.store.db() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM progress WHERE item_id IN ('電','腦')").fetchone()[0],0)
+
+    def test_manual_compound_enters_both_decks_without_mastery(self):
+        result=self.store.add({'source':'catalog','id':'毛衣'})
+        self.assertFalse(result['queued'])
+        self.assertEqual(result['missing_prerequisites'],[])
+        self.assert_enrolled('毛衣')
+        item=next(i for i in self.store.state()['items'] if i['id']=='毛衣')
+        self.assertTrue(item['enrolled'])
+        self.assertFalse(item['waiting'])
+
+    def test_automatic_addition_includes_compound_with_unlearned_parts(self):
         self.store.vocabulary=VocabularyPolicy({'大腳趾':10000})
         with self.store.db() as db:
             compound=self.insert(db,'大腳趾','dà jiǎo zhǐ','big toe')
-            toe=self.insert(db,'腳趾','jiǎo zhǐ','toe')
-            source=self.store._item(db,'好')
-            self.assertEqual(self.store._expand(db,source,1),[])
-            self.master(db,self.store._item(db,'大'))
-            self.assertEqual(self.store._fill_expansion(db,source,1,[]),[])
-            self.master(db,toe,'drawing')
-            self.assertEqual(self.store._fill_expansion(db,source,1,[]),['大腳趾'])
+            self.insert(db,'腳趾','jiǎo zhǐ','toe')
+            self.assertEqual(self.store._expand(db,self.store._item(db,'好'),1),['大腳趾'])
+        self.assert_enrolled(compound['id'])
 
-    def test_manual_prerequisite_action_adds_foundations(self):
+    def test_interest_addition_includes_compound_without_mastery(self):
         with self.store.db() as db:
-            self.store._enroll(db,'毛衣')
-        result=self.store.add_prerequisites('毛衣')
-        self.assertEqual(set(result['added']),{'毛','衣'})
-        state=self.store.state()
-        for text in ['毛','衣']:
-            self.assertTrue(any(i['text']==text and i['enrolled'] for i in state['items']))
-        self.assertTrue(next(i for i in state['items'] if i['id']=='毛衣')['waiting'])
+            compound=self.insert(db,'電話','diàn huà','telephone',topic='technology')
+        self.store.update_settings({'interests':['technology']})
+        self.assert_enrolled(compound['id'])
 
-    def test_automatic_pool_passes_corpus_counts_to_sampler(self):
+    def test_dictionary_compound_can_be_added_manually_or_generated(self):
+        for source in ('manual','generation'):
+            with self.subTest(source=source):
+                with self.store.db() as db:
+                    row_id=db.execute('INSERT INTO dictionary(traditional,pinyin,meanings) VALUES (?,?,?)',
+                                      ('銀行','yín háng',json.dumps(['bank']))).lastrowid
+                if source=='manual':
+                    result=self.store.add({'source':'dictionary','id':row_id})
+                    self.assertFalse(result['queued'])
+                    item=result['item']
+                    self.assert_enrolled(item['id'])
+                    # Remove this fixture so the next iteration uses the dictionary pool.
+                    with self.store.db() as db:
+                        db.execute('DELETE FROM progress WHERE item_id=?',(item['id'],))
+                        db.execute('DELETE FROM items WHERE id=?',(item['id'],))
+                else:
+                    self.store.vocabulary=VocabularyPolicy({'銀行':100})
+                    result=self.store.generate_entries({'source':'category','category':'bank','count':1})
+                    self.assertEqual([i['text'] for i in result['items']],['銀行'])
+                    self.assert_enrolled(result['items'][0]['id'])
+
+    def test_legacy_waiting_word_activates_on_state_startup_and_restore(self):
+        for trigger in ('state','startup','restore'):
+            with self.subTest(trigger=trigger):
+                self.queue_legacy_word()
+                if trigger=='state':
+                    self.store.state()
+                elif trigger=='startup':
+                    self.store=self.open_store()
+                else:
+                    self.store.restore(self.store.backup())
+                self.assert_enrolled('電腦')
+                self.assertFalse(self.store.item('電腦').get('requested'))
+
+    def test_deleted_waiting_word_stays_deleted_until_undo(self):
+        self.queue_legacy_word()
+        self.store.delete_entries(['電腦'])
+        self.assertFalse(any(i['id']=='電腦' for i in self.store.state()['items']))
+        self.store.restore_entries(['電腦'])
+        self.store.state()
+        self.assert_enrolled('電腦')
+
+    def test_legacy_activation_preserves_existing_progress(self):
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET level=2,attempts=5,failures=1,eligible_after=7 WHERE item_id='電腦'")
+            before=[dict(p) for p in db.execute("SELECT * FROM progress WHERE item_id='電腦'")]
+            db.execute("UPDATE items SET data=json_set(data,'$.requested',json('true')) WHERE id='電腦'")
+        self.store.state()
+        with self.store.db() as db:
+            self.assertEqual([dict(p) for p in db.execute("SELECT * FROM progress WHERE item_id='電腦'")],before)
+
+    def test_automatic_pool_passes_nonlinear_weights_to_sampler(self):
         self.store.vocabulary=VocabularyPolicy({'人':900,'大':100})
         with self.store.db() as db, patch('nihowdy.store.weighted_sample',wraps=weighted_sample) as sampler:
             result=self.store._expand(db,self.store._item(db,'好'),1)
             self.assertEqual(set(result),{'人','大'})
-            self.assertEqual({i['text']:w for i,w in sampler.call_args.args[0]},{'人':900,'大':100})
-
-    def test_mastery_of_another_reading_does_not_unlock_component(self):
-        with self.store.db() as db:
-            bank=self.insert(db,'銀行','yín háng','bank')
-            silver=self.insert(db,'銀','yín','silver')
-            go=self.insert(db,'行','xíng','to go')
-            line=self.insert(db,'行','háng','line')
-            self.master(db,silver)
-            self.master(db,go)
-            missing=self.store._missing_prerequisites(db,bank)
-            self.assertTrue(any(p['text']=='行' and p['pinyin']=='háng' for p in missing))
-            self.master(db,line)
-            self.assertEqual(self.store._missing_prerequisites(db,bank),[])
+            self.assertEqual({i['text']:w for i,w in sampler.call_args.args[0]},
+                             {'人':900 ** 1.5,'大':100 ** 1.5})
 
 
 if __name__=='__main__':

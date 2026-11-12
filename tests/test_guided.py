@@ -41,6 +41,13 @@ def isolated_store(path):
 
 
 class GuidedTests(unittest.TestCase):
+    def next_prompt(self, mode):
+        prompt = self.store.next_prompt(mode)
+        while prompt.get('introduction'):
+            self.store.answer(prompt['id'], {'continue': True})
+            prompt = self.store.next_prompt(mode)
+        return prompt
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -60,10 +67,10 @@ class GuidedTests(unittest.TestCase):
 
     def test_five_whole_words_persist_and_score_once(self):
         for repetition in range(1, 6):
-            prompt = self.store.next_prompt('drawing')
+            prompt = self.next_prompt('drawing')
             self.assertEqual(prompt['guided_completions'], repetition - 1)
             self.assertEqual(len(prompt['characters']), 2)
-            self.assertEqual(self.store.next_prompt('drawing')['id'], prompt['id'])
+            self.assertEqual(self.next_prompt('drawing')['id'], prompt['id'])
             result = self.store.answer(prompt['id'], self.answer(prompt))
             self.assertTrue(result['correct'])
             self.assertEqual(result['progress']['guided_completions'], repetition)
@@ -71,7 +78,7 @@ class GuidedTests(unittest.TestCase):
             self.assertEqual(self.store.answer(prompt['id'], self.answer(prompt)), result)
             self.store = isolated_store(self.path)
             self.store.taiwan = {ch: copy.deepcopy(GUIDE) for ch in HANZI}
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         self.assertEqual(prompt['level'], 2)
         self.assertIn('pinyin', prompt)
         self.assertNotIn('guide', prompt['characters'][0])
@@ -79,12 +86,12 @@ class GuidedTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT COUNT(*) FROM attempts').fetchone()[0], 5)
 
     def test_partial_word_does_not_count(self):
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         answer = self.answer(prompt)
         answer['drawings'].pop()
         with self.assertRaisesRegex(ValueError, 'each character'):
             self.store.answer(prompt['id'], answer)
-        self.assertEqual(self.store.next_prompt('drawing')['guided_completions'], 0)
+        self.assertEqual(self.next_prompt('drawing')['guided_completions'], 0)
 
     def test_components_advance_into_guided(self):
         self.store.hanzi = copy.deepcopy(HANZI)
@@ -93,17 +100,17 @@ class GuidedTests(unittest.TestCase):
             db.execute('DELETE FROM progress')
             self.store._enroll(db, '我')
             db.execute("DELETE FROM progress WHERE mode!='drawing'")
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         self.assertEqual(prompt['level'], 0)
         answer = {'drawings': [{'placements': [s['id'] for s in c['slots']]} for c in prompt['characters']]}
         result = self.store.answer(prompt['id'], answer)
         self.assertEqual(result['progress']['level'], 1)
-        self.assertEqual(self.store.next_prompt('drawing')['guided_completions'], 0)
+        self.assertEqual(self.next_prompt('drawing')['guided_completions'], 0)
 
     def test_wrong_order_direction_omission_and_extra_ink_rejected(self):
         for change in ('reverse', 'swap', 'omit', 'extra'):
             with self.subTest(change=change):
-                prompt = self.store.next_prompt('drawing')
+                prompt = self.next_prompt('drawing')
                 answer = self.answer(prompt)
                 strokes = answer['drawings'][0]['strokes']
                 if change == 'reverse': strokes[0].reverse()
@@ -113,7 +120,7 @@ class GuidedTests(unittest.TestCase):
                 self.assertFalse(self.store.answer(prompt['id'], answer)['correct'])
 
     def test_information_cannot_earn_repetition(self):
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         self.store.info(prompt['id'])
         self.store.info(prompt['id'])
         result = self.store.answer(prompt['id'], self.answer(prompt))
@@ -124,29 +131,29 @@ class GuidedTests(unittest.TestCase):
     def test_completed_word_returns_to_random_pool(self):
         with self.store.db() as db:
             self.store._enroll(db, '我')
-        first = self.store.next_prompt('drawing')
+        first = self.next_prompt('drawing')
         self.store.answer(first['id'], self.answer(first))
-        second = self.store.next_prompt('drawing')
+        second = self.next_prompt('drawing')
         self.assertNotEqual(first['total_characters'], second['total_characters'])
         self.store.answer(second['id'], self.answer(second))
-        third = self.store.next_prompt('drawing')
+        third = self.next_prompt('drawing')
         self.assertEqual(third['total_characters'], first['total_characters'])
         self.assertEqual(third['guided_completions'], 1)
 
     def test_no_prc_fallback_when_taiwan_missing(self):
         self.store.taiwan = {}
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         self.assertTrue(prompt['empty'])
         self.assertIn('Taiwan', prompt['message'])
         with self.store.db() as db:
             self.assertEqual(db.execute('SELECT level FROM progress').fetchone()[0], 1)
 
     def test_backup_roundtrip_and_old_backup_migration(self):
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         self.store.answer(prompt['id'], self.answer(prompt))
         current = self.store.backup()
         self.store.restore(current)
-        self.assertEqual(self.store.next_prompt('drawing')['guided_completions'], 1)
+        self.assertEqual(self.next_prompt('drawing')['guided_completions'], 1)
         legacy = copy.deepcopy(current)
         legacy['version'] = 1
         legacy['tables']['prompts'] = []
@@ -165,24 +172,24 @@ class GuidedTests(unittest.TestCase):
     def test_existing_database_and_pending_prompt_migrate_once(self):
         with self.store.db() as db:
             db.execute("UPDATE progress SET level=2")
-        prompt = self.store.next_prompt('drawing')
+        prompt = self.next_prompt('drawing')
         with self.store.db() as db:
             db.execute("UPDATE progress SET level=1")
             db.execute("UPDATE prompts SET level=1")
             db.execute("UPDATE settings SET value='1' WHERE key='schema'")
             db.execute('ALTER TABLE progress DROP COLUMN guided_completions')
         self.store = isolated_store(self.path)
-        recovered = self.store.next_prompt('drawing')
+        recovered = self.next_prompt('drawing')
         self.assertEqual((recovered['id'], recovered['level']), (prompt['id'], 2))
         self.store = isolated_store(self.path)
-        self.assertEqual(self.store.next_prompt('drawing')['level'], 2)
+        self.assertEqual(self.next_prompt('drawing')['level'], 2)
 
     def test_later_drawing_levels_keep_cues_and_shape_grading(self):
         for level in (2, 3, 4):
             with self.store.db() as db:
                 db.execute('UPDATE progress SET level=?', (level,))
                 db.execute('UPDATE prompts SET finished=1')
-            prompt = self.store.next_prompt('drawing')
+            prompt = self.next_prompt('drawing')
             self.assertEqual('pinyin' in prompt, level == 2)
             with self.store.db() as db:
                 plan = json.loads(db.execute('SELECT payload FROM prompts WHERE id=?', (prompt['id'],)).fetchone()[0])

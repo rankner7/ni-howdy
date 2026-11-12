@@ -13,14 +13,16 @@ from itertools import islice
 from time import monotonic
 from zoneinfo import ZoneInfo
 
-from .answers import correct_english_phrase
-from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
+from .answers import correct_english_phrase, with_word_answers, word_sense_matches
+from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOSS,
+                      component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
 from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
 from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
 from .vocabulary import VocabularyPolicy, reading_key
 from .taiwan import load_taiwan
+from .senses import automatic_sense, misleading_food_sense, with_usage_note
 
 
 def encode(value):
@@ -37,7 +39,6 @@ class Store:
         self.taiwan = load_taiwan()
         self.vocabulary = VocabularyPolicy()
         self._neighbor_cache = {}
-        self._parts_cache = {}
         self.lock = threading.RLock()
         with self.db() as db:
             db.executescript("""
@@ -72,10 +73,12 @@ class Store:
             if not db.execute("SELECT 1 FROM items LIMIT 1").fetchone():
                 for item in starter_items():
                     if item['kind'] == 'word':
-                        db.execute("INSERT INTO items VALUES (?,?)", (item["id"], encode(item)))
+                        db.execute("INSERT INTO items VALUES (?,?)", (item["id"], encode(with_word_answers(item))))
                 for word in ["我", "你", "也", "要", "喝", "水", "茶", "好", "一", "二", "三", "電腦"]:
-                    if not self._enroll(db, word):
-                        self._add_prerequisites(db,self._item(db,word))
+                    self._enroll(db, word)
+            self._repair_generated_senses(db)
+            self._repair_dictionary_conjunction(db)
+            self._activate_waiting(db)
 
     def _migrate_drawing(self, db):
         columns = {row[1] for row in db.execute('PRAGMA table_info(progress)')}
@@ -104,6 +107,34 @@ class Store:
                 db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), row['id']))
         db.execute("INSERT OR REPLACE INTO settings VALUES ('schema','2')")
 
+    def _repair_generated_senses(self, db):
+        """Repair the known automatic 實/fruit card without replacing its identity."""
+        for row in db.execute("SELECT id,data FROM items WHERE json_extract(data,'$.text')='實'").fetchall():
+            item=json.loads(row['data'])
+            if (item.get('kind') != 'word' or not item.get('related_to') or
+                not misleading_food_sense(item['text'], item['pinyin'], item['english'])):
+                continue
+            item.update(english='solid; real; substantial', answers=['solid','real','substantial'],
+                        topic='custom')
+            db.execute('UPDATE items SET data=? WHERE id=?', (encode(with_usage_note(item)), row['id']))
+            # A displayed English drawing cue may describe the old sense.
+            db.execute("UPDATE prompts SET finished=1,payload=json_set(payload,'$.cancelled',1) WHERE item_id=? AND finished=0",
+                       (row['id'],))
+
+    def _repair_dictionary_conjunction(self, db):
+        """Repair the annotated 和/and card while retaining its ID and progress."""
+        for row in db.execute("SELECT id,data FROM items WHERE json_extract(data,'$.text')='和'").fetchall():
+            item = json.loads(row['data'])
+            if (item.get('kind') != 'word' or item.get('english') != LEGACY_AND_GLOSS
+                    or reading_key(item['pinyin']) not in {'hé', 'hàn'}):
+                continue
+            item.update(pinyin='hé', english='and', answers=['and'], usage_note=AND_USAGE)
+            if not any(s['url'] == AND_SOURCE for s in item.get('sources', [])):
+                item.setdefault('sources', []).append({'title': 'TOCFL / NAER: 和 readings and usage', 'url': AND_SOURCE})
+            db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), row['id']))
+            db.execute("UPDATE prompts SET finished=1,payload=json_set(payload,'$.cancelled',1) WHERE item_id=? AND finished=0",
+                       (row['id'],))
+
     @contextmanager
     def db(self):
         with self.lock:
@@ -125,7 +156,7 @@ class Store:
         started = monotonic()
         with self.db() as db:
             version = db.execute("SELECT value FROM settings WHERE key='dictionary_version'").fetchone()
-            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone() or not version or version[0] != '2':
+            if not db.execute("SELECT 1 FROM dictionary LIMIT 1").fetchone() or not version or version[0] != DICTIONARY_VERSION:
                 report("Building the local dictionary index (first launch or data update)…")
                 db.execute("DELETE FROM dictionary")
                 rows = iter(dictionary_rows())
@@ -134,12 +165,11 @@ class Store:
                     db.executemany("INSERT INTO dictionary(traditional,simplified,pinyin,plain,meanings) VALUES (?,?,?,?,?)", batch)
                     count += len(batch)
                     report(f"  Indexed {count:,} entries ({monotonic()-started:.1f}s)…")
-                db.execute("INSERT OR REPLACE INTO settings VALUES ('dictionary_version','2')")
+                db.execute("INSERT OR REPLACE INTO settings VALUES ('dictionary_version',?)", (DICTIONARY_VERSION,))
             else:
                 count = db.execute("SELECT COUNT(*) FROM dictionary").fetchone()[0]
                 report(f"Using the existing dictionary index ({count:,} entries).")
         report(f"Dictionary ready in {monotonic()-started:.1f}s.")
-        self._parts_cache.clear()
         self._neighbor_cache.clear()
 
     def _settings(self, db):
@@ -149,7 +179,7 @@ class Store:
         return self.now().astimezone(ZoneInfo(self._settings(db)["timezone"])).date().isoformat()
 
     def _items(self, db, include_deleted=False):
-        items={r['id']:json.loads(r['data']) for r in db.execute('SELECT * FROM items')}
+        items={r['id']:with_word_answers(with_usage_note(json.loads(r['data']))) for r in db.execute('SELECT * FROM items')}
         return items if include_deleted else {key:item for key,item in items.items() if not item.get('deleted')}
 
     def _item(self, db, item_id, include_deleted=False):
@@ -159,19 +189,15 @@ class Store:
         item=json.loads(row['data'])
         if item.get('deleted') and not include_deleted:
             raise ValueError('This entry was deleted from your library. Restore it through Add example if you want to practise it again.')
-        return item
+        return with_word_answers(with_usage_note(item))
 
     def lowest(self, item, mode):
         return 1 if mode == "drawing" and not any(component_groups(c, self.hanzi) for c in item["text"]) else 0
 
     def _enroll(self, db, item_id, after=0):
         item = self._item(db, item_id)
-        if item['kind']=='word' and not db.execute('SELECT 1 FROM progress WHERE item_id=?',(item_id,)).fetchone():
-            missing=self._missing_prerequisites(db,item)
-            if missing:
-                item['requested']=True
-                db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item_id))
-                return False
+        if item.pop('requested', False):
+            db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), item_id))
         modes = ["phrases"] if item["kind"] == "phrase" else ["flashcards", "drawing"]
         for mode in modes:
             if mode == "drawing" and not all(c in self.hanzi for c in item["text"]):
@@ -180,76 +206,15 @@ class Store:
                        (item_id, mode, self.lowest(item, mode), after))
         return True
 
-    def _lexeme(self, db, text, pinyin):
-        for row in db.execute("SELECT data FROM items WHERE json_extract(data,'$.text')=? AND json_extract(data,'$.kind')='word' AND COALESCE(json_extract(data,'$.deleted'),0)=0",(text,)):
-            item=json.loads(row[0])
-            if reading_key(item['pinyin'])==reading_key(pinyin):
-                return dict(text=text,pinyin=item['pinyin'],english=item['english'],id=item['id'])
-        for row in db.execute('SELECT * FROM dictionary WHERE traditional=? ORDER BY id',(text,)):
-            if reading_key(row['pinyin'])==reading_key(pinyin):
-                return dict(text=text,pinyin=row['pinyin'],english=json.loads(row['meanings'])[0],
-                            id=None,dictionary_id=row['id'])
-        if len(text)==1 and text in self.hanzi:
-            data=self.hanzi[text]
-            readings=data.get('pinyin') or []
-            if isinstance(readings,str):
-                readings=readings.split(',')
-            if any(reading_key(p)==reading_key(pinyin) for p in readings) and data.get('definition'):
-                return dict(text=text,pinyin=pinyin,english=data['definition'].split(';')[0],id=None)
-        return None
-
-    def _missing_prerequisites(self, db, item):
-        if item['kind']!='word' or len(item['text'])<2:
-            return []
-        mastered=set()
-        for row in db.execute("SELECT DISTINCT i.data FROM items i JOIN progress p ON p.item_id=i.id WHERE p.mode IN ('flashcards','drawing') AND p.status IN ('mastered','review')"):
-            entry=json.loads(row[0])
-            mastered.add((entry['text'],reading_key(entry['pinyin'])))
-        key=(item['text'],item['pinyin'])
-        if key not in self._parts_cache:
-            self._parts_cache[key]=self.vocabulary.parts(item,lambda text,pinyin:self._lexeme(db,text,pinyin))
-        parts=self._parts_cache[key]
-        return [p for p in parts if (p['text'],reading_key(p['pinyin'])) not in mastered]
-
     def _activate_waiting(self, db):
-        for item in list(self._items(db).values()):
-            if item.get('requested') and not db.execute('SELECT 1 FROM progress WHERE item_id=?',(item['id'],)).fetchone():
-                if not self._missing_prerequisites(db,item):
-                    self._enroll(db,item['id'])
+        """Admit requests saved under the former compound-prerequisite rule."""
+        for item in self._items(db).values():
+            if item.get('requested') and item['kind'] == 'word':
+                self._enroll(db, item['id'])
 
-    def _addition_result(self, db, item, enrolled):
-        missing=[] if enrolled else self._missing_prerequisites(db,item)
-        return {'item':item,'queued':not enrolled,'missing_prerequisites':missing,
-                'message':'Added to your practice library.' if enrolled else
-                          'Waiting for mastery of: '+', '.join(p['text']+' ('+p['english']+')' for p in missing)+'.'}
-
-    def add_prerequisites(self, item_id):
-        with self.db() as db:
-            return self._add_prerequisites(db,self._item(db,item_id))
-
-    def _add_prerequisites(self, db, parent):
-        added=[]
-        for part in self._missing_prerequisites(db,parent):
-            current=self._lexeme(db,part['text'],part['pinyin'])
-            if not current:
-                continue
-            if current.get('id'):
-                item=self._item(db,current['id'])
-            elif current.get('dictionary_id'):
-                row=db.execute('SELECT * FROM dictionary WHERE id=?',(current['dictionary_id'],)).fetchone()
-                item=self._dictionary_item(db,row,current['english'])
-            else:
-                text=current['text']
-                item=dict(id=text+':component:'+reading_key(current['pinyin']),kind='word',text=text,
-                          pinyin=current['pinyin'],english=current['english'],answers=[current['english']],
-                          chinese_answers=[text],topic=parent['topic'],tokens=[],region='TW',script='Hant',status='ready',
-                          explanation='A meaningful part of '+parent['text']+'.',
-                          explanation_origin='Source-backed character construction',
-                          characters=construction(text,self.hanzi),sources=sources_for(text))
-                db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(item['id'],encode(item)))
-            self._enroll(db,item['id'])
-            added.append(item['text'])
-        return {'added':added,'message':'Added prerequisite vocabulary: '+', '.join(added)+'.'}
+    def _addition_result(self, item):
+        return {'item':item,'queued':False,'missing_prerequisites':[],
+                'message':'Added to your practice library.'}
 
     def _phrase_history(self, db):
         """All phrases, including deleted/mastered ones, reserve their sentence.
@@ -359,11 +324,10 @@ class Store:
         return db.execute("INSERT INTO sessions(created_at) VALUES (?)", (self.now().isoformat(),)).lastrowid
 
     def new_session(self):
+        # Compatibility for older clients: practice now uses one rolling session.
         with self.db() as db:
-            db.execute("UPDATE sessions SET active=0")
             self._reviews(db)
-            session = self._session(db)
-        return {"session": session}
+            return {"session": self._session(db)}
 
     def state(self):
         with self.db() as db:
@@ -386,9 +350,9 @@ class Store:
                 item["progress"] = [p for p in progress if p["item_id"] == item["id"]]
                 item['can_delete']=bool((item['enrolled'] or item.get('requested')) and not any(p['status'] in ('mastered','review') for p in item['progress']))
                 if item['kind']=='word':
-                    item['frequency_count']=self.vocabulary.addition_weight(item['text'])
-                    item['missing_prerequisites']=[] if item['enrolled'] else self._missing_prerequisites(db,item)
-                    item['waiting']=bool(item.get('requested') and not item['enrolled'])
+                    item['frequency_count']=self.vocabulary.frequency_count(item['text'])
+                    item['missing_prerequisites']=[]
+                    item['waiting']=False
             count = db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
             correct = db.execute("SELECT COUNT(*) FROM attempts WHERE correct=1").fetchone()[0]
             recent = [dict(r) for r in db.execute("SELECT * FROM attempts WHERE mode!='phrases' ORDER BY id DESC LIMIT 8")]
@@ -427,8 +391,6 @@ class Store:
                     if item["kind"] != "word":
                         continue
                     if item["topic"] in settings["interests"] or (text and any(a.casefold() in text for a in item["answers"] if len(a) > 3)):
-                        if self._missing_prerequisites(db,item):
-                            continue
                         # A small opening deck leaves room for mastery-triggered expansion.
                         existing = db.execute("SELECT COUNT(*) FROM progress p JOIN items i ON i.id=p.item_id WHERE p.mode='flashcards' AND json_extract(i.data,'$.topic')=?", (item["topic"],)).fetchone()[0]
                         if existing < 4:
@@ -476,7 +438,7 @@ class Store:
                 return self._public_prompt(db, outstanding)
             candidates = []
             awaiting_taiwan = False
-            for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered' AND eligible_after<?", (mode, session)):
+            for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered'", (mode,)):
                 item = self._item(db, row["item_id"])
                 if mode == 'drawing' and row['level'] == 1 and not all(ch in self.taiwan for ch in item['text']):
                     awaiting_taiwan = True
@@ -497,10 +459,17 @@ class Store:
             if selected is None and awaiting_taiwan:
                 return {'empty': True, 'mode': mode, 'message': 'Guided practice is waiting for Taiwan stroke templates. Run python3 scripts/prepare_taiwan.py and restart the app. Other vocabulary modes remain available.'}
             if selected is None:
-                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need more than three words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your eligible deck is complete. Start a new session for newly added words, or come back for daily reviews."}
+                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need more than three words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
             item = self._item(db, selected)
             progress = db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (selected, mode)).fetchone()
             plan = {"drawing": self._drawing_plan(item, progress["level"])} if mode == "drawing" else {}
+            # Introduce each word once per skill, preserving the acknowledgement
+            # in prompt history so reloads and backups cannot lose it.
+            if (mode in ('flashcards', 'drawing') and progress['attempts'] == 0
+                    and progress['status'] == 'active' and progress['level'] == self.lowest(item, mode)
+                    and not db.execute("SELECT 1 FROM prompts WHERE item_id=? AND mode=? AND finished=1 LIMIT 1",
+                                       (selected, mode)).fetchone()):
+                plan['introduction'] = True
             prompt_id = uuid.uuid4().hex
             db.execute("INSERT INTO prompts(id,session_id,item_id,mode,level,payload) VALUES (?,?,?,?,?,?)",
                        (prompt_id, session, selected, mode, progress["level"], encode(plan)))
@@ -514,6 +483,9 @@ class Store:
                "levels": LEVELS[mode], "hint": bool(row["hint"]), "review": p["status"] == "review",
                "failures": p["failures"], "topic": item["topic"], "session": row["session_id"],
                "finished": bool(row["finished"])}
+        if json.loads(row['payload']).get('introduction'):
+            out.update(introduction=True, item=item)
+            return out
         if mode == "drawing" or (mode == "phrases" and level == 2):
             out["english"] = item["english"]
         if mode == "flashcards" or (mode == "phrases" and level < 2):
@@ -564,9 +536,10 @@ class Store:
         enrolled_forms={self._item(db,item_id)['text'] for item_id in enrolled}
         terms=self._neighbor_terms(item)
         candidates = [i for i in self._items(db,include_deleted=include_deleted).values() if i["kind"] == "word" and
+                      not misleading_food_sense(i['text'], i['pinyin'], i['english']) and
                       ((item["topic"] != "custom" and i["topic"] == item["topic"]) or item["id"] in i.get("related_to", []) or self._related_meaning(i['answers'],terms)) and i['text'] not in enrolled_forms and
-                      self.vocabulary.addition_weight(i['text'])>0 and
-                      all(c in self.hanzi for c in i["text"]) and not self._missing_prerequisites(db,i)]
+                      self.vocabulary.frequency_count(i['text'])>0 and
+                      all(c in self.hanzi for c in i["text"])]
         candidates.extend(self._dictionary_neighbors(db, item, enrolled | {i["id"] for i in candidates}))
         unique={}
         for entry in candidates:
@@ -582,8 +555,8 @@ class Store:
             db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(entry['id'],encode(entry)))
             if entry.get('deleted'):
                 entry=self._restore_item(db,entry['id'])
-            self._enroll(db,entry['id'],after=after)
-            db.execute('UPDATE progress SET eligible_after=MAX(eligible_after,?) WHERE item_id=?',(after,entry['id']))
+            self._enroll(db,entry['id'])
+            db.execute('UPDATE progress SET eligible_after=0 WHERE item_id=?',(entry['id'],))
             added.append(entry)
         return added
 
@@ -610,8 +583,8 @@ class Store:
                 raise ValueError('Generate from a mastered word or a category.')
             added=self._select_entries(db,source,count,self._session(db))
             return {'items':added,'requested':count,'added':len(added),
-                    'message':f"Added {len(added)} new entries for your next practice session." if added else
-                              'No eligible new entries were found. Try another category or master more prerequisite words.'}
+                    'message':f"Added {len(added)} new entries to your practice shuffle." if added else
+                              'No eligible new entries were found. Try another category.'}
 
     def _neighbor_terms(self, item):
         return {
@@ -643,11 +616,11 @@ class Store:
         prepared=[]
         for row in rows:
             form=row["traditional"]
-            if form in existing_forms or not self.vocabulary.addition_weight(form) or not all(c in self.hanzi for c in form):
+            if form in existing_forms or not self.vocabulary.frequency_count(form) or not all(c in self.hanzi for c in form):
                 continue
             meanings=json.loads(row["meanings"])
-            sense=self._related_meaning([s for s in meanings if len(s)<=40 and s[:1].islower() and not re.search(r'[()\[\];]',s)],terms)
-            if not sense:
+            sense=automatic_sense(form,row['pinyin'],meanings)
+            if not sense or not self._related_meaning([sense],terms):
                 continue
             entry=dict(id=form+":"+hashlib.sha256((row["pinyin"]+sense).encode()).hexdigest()[:8],
                        kind="word",text=form,pinyin=row["pinyin"],english=sense,answers=[sense],
@@ -655,9 +628,9 @@ class Store:
                        related_to=[item["id"]],explanation="Related vocabulary selected from local dictionary meanings. Explore its character construction below.",
                        explanation_origin="Dictionary-backed construction; fuller explanation available with an optional provider",
                        characters=construction(form,self.hanzi),sources=sources_for(form))
-            if entry["id"] in exclude or self._missing_prerequisites(db,entry):
+            if entry["id"] in exclude:
                 continue
-            prepared.append(entry);existing_forms.add(form)
+            prepared.append(with_word_answers(with_usage_note(entry)));existing_forms.add(form)
         return prepared
 
     def _score(self, db, prompt, correct, hint=False):
@@ -693,6 +666,8 @@ class Store:
     def info(self, prompt_id):
         with self.db() as db:
             prompt = self._prompt(db, prompt_id)
+            if json.loads(prompt['payload']).get('introduction'):
+                return {"item": self._item(db, prompt['item_id']), "penalty": False}
             if not prompt["scored"]:
                 result = self._score(db, prompt, False, hint=True)
                 db.execute("UPDATE prompts SET result=? WHERE id=?", (encode(result), prompt_id))
@@ -703,6 +678,12 @@ class Store:
             prompt = self._prompt(db, prompt_id)
             if prompt["finished"]:
                 return json.loads(prompt["result"])
+            if json.loads(prompt['payload']).get('introduction'):
+                if answer.get('continue') is not True:
+                    raise ValueError('Press Continue to finish this new word introduction.')
+                result = {'introduced': True}
+                db.execute('UPDATE prompts SET finished=1,result=? WHERE id=?', (encode(result), prompt_id))
+                return result
             item = self._item(db, prompt["item_id"])
             details = []
             if prompt["mode"] == "drawing":
@@ -795,7 +776,6 @@ class Store:
                 db.execute('DELETE FROM progress WHERE item_id=?',(item['id'],))
             for item_id in affected:
                 db.execute("UPDATE prompts SET finished=1,payload=json_set(payload,'$.cancelled',1) WHERE item_id=? AND finished=0",(item_id,))
-            self._parts_cache.clear()
             return {'deleted':item_ids,'message':f"Deleted {len(item_ids)} unmastered {'entry' if len(item_ids)==1 else 'entries'} from your library."}
 
     def _restore_item(self, db, item_id):
@@ -811,7 +791,6 @@ class Store:
             if progress.get('item_id')!=item_id or progress.get('mode') not in LEVELS:
                 raise ValueError('Saved entry progress is invalid.')
             db.execute('INSERT OR IGNORE INTO progress('+','.join(columns)+') VALUES ('+','.join('?' for _ in columns)+')',[progress[c] for c in columns])
-        self._parts_cache.clear()
         return item
 
     def restore_entries(self, item_ids):
@@ -830,17 +809,23 @@ class Store:
                      (i["text"]+" "+i["english"]+" "+plain_pinyin(i["pinyin"])).casefold()]
             # Literal LIKE escaping avoids wildcards expanding a user query.
             pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            rows = db.execute("SELECT * FROM dictionary WHERE traditional=? OR simplified=? OR plain=? OR meanings LIKE ? ESCAPE '\\' ORDER BY length(traditional),id LIMIT 30",
-                              (query, query, plain_pinyin(query), "%"+pattern+"%"))
+            rows = db.execute("SELECT * FROM dictionary WHERE traditional=? OR simplified=? OR plain=? OR meanings LIKE ? ESCAPE '\\' "
+                              "ORDER BY CASE WHEN traditional=? OR simplified=? OR plain=? THEN 0 "
+                              "WHEN EXISTS (SELECT 1 FROM json_each(dictionary.meanings) WHERE lower(value)=lower(?)) THEN 1 ELSE 2 END, "
+                              "length(traditional),id LIMIT 30",
+                              (query, query, plain_pinyin(query), "%"+pattern+"%", query, query, plain_pinyin(query), query))
             catalog_matches = tuple(known)
             for r in rows:
                 meanings = [meaning for meaning in json.loads(r["meanings"]) if not any(
                     item["text"] == r["traditional"] and item["pinyin"] == r["pinyin"] and
-                    correct_answer(meaning, item["answers"]) for item in catalog_matches)]
+                    word_sense_matches(item, meaning) for item in catalog_matches)]
                 if meanings:
-                    known.append({"id": r["id"], "source": "dictionary", "text": r["traditional"],
-                                  "pinyin": r["pinyin"], "english": meanings[0],
-                                  "meanings": meanings, "kind": "word"})
+                    entry = {"id": r["id"], "source": "dictionary", "text": r["traditional"],
+                             "pinyin": r["pinyin"], "english": meanings[0],
+                             "meanings": meanings, "kind": "word"}
+                    if r['traditional'] == '和' and r['pinyin'] in {'hé', 'hàn'} and 'and' in meanings:
+                        entry['usage_note'] = AND_USAGE
+                    known.append(entry)
             return known[:35]
 
     def ime(self, query):
@@ -863,8 +848,8 @@ class Store:
         with self.db() as db:
             if values.get("source") == "catalog":
                 item = self._restore_item(db,values['id'])
-                enrolled=self._enroll(db, item["id"])
-                return self._addition_result(db,item,enrolled)
+                self._enroll(db, item["id"])
+                return self._addition_result(item)
             if values.get("source") != "dictionary":
                 text = str(values.get("text", "")).strip()[:500]
                 if not text:
@@ -881,12 +866,15 @@ class Store:
             if sense not in meanings:
                 raise ValueError("Choose a validated dictionary meaning.")
             item=self._dictionary_item(db,row,sense)
-            enrolled=self._enroll(db,item['id'])
-            return self._addition_result(db,item,enrolled)
+            self._enroll(db,item['id'])
+            return self._addition_result(item)
 
     def _dictionary_item(self, db, row, sense):
+        if row['traditional'] == '和' and sense == LEGACY_AND_GLOSS:
+            row = dict(row, pinyin='hé')
+            sense = 'and'
         for existing in self._items(db,include_deleted=True).values():
-            if existing['text']==row['traditional'] and reading_key(existing['pinyin'])==reading_key(row['pinyin']) and correct_answer(sense,existing['answers']):
+            if existing['text']==row['traditional'] and reading_key(existing['pinyin'])==reading_key(row['pinyin']) and word_sense_matches(existing, sense):
                 return self._restore_item(db,existing['id'])
         form=row['traditional']
         if not all(c in self.hanzi for c in form):
@@ -898,8 +886,12 @@ class Store:
                   explanation='Local dictionary entry. Character construction is shown below. Generate a sourced explanation to add a fuller contextual note.',
                   explanation_origin='Dictionary-backed construction; LLM explanation not generated yet',
                   characters=construction(form,self.hanzi),sources=sources_for(form))
+        if form == '和' and reading_key(row['pinyin']) in {'hé', 'hàn'} and sense in {'and', 'with', 'together with'}:
+            item.update(usage_note=AND_USAGE)
+            item['sources'].append({'title': 'TOCFL / NAER: 和 readings and usage', 'url': AND_SOURCE})
+        item = with_word_answers(item)
         db.execute('INSERT OR IGNORE INTO items VALUES (?,?)',(item_id,encode(item)))
-        return item
+        return with_usage_note(item)
 
     def backup(self):
         with self.db() as db:
@@ -909,7 +901,7 @@ class Store:
 
     def restore(self, backup):
         if backup.get("format") != "ni-howdy" or backup.get("version") not in (1, 2):
-            raise ValueError("Choose a Ni-howdy version 1 or 2 backup.")
+            raise ValueError("Choose a 你howdy version 1 or 2 backup.")
         allowed = ["settings", "items", "progress", "sessions", "prompts", "attempts", "trials", "expansions", "pending"]
         if set(backup.get("tables", {})) != set(allowed):
             raise ValueError("Backup is incomplete.")
@@ -930,4 +922,7 @@ class Store:
                 raise ValueError("Invalid review probability in backup.")
             ZoneInfo(settings["timezone"])
             self._items(db)  # Validate JSON before committing the replacement.
+            self._repair_generated_senses(db)
+            self._repair_dictionary_conjunction(db)
+            self._activate_waiting(db)
         return {"restored": True}

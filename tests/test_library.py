@@ -30,7 +30,7 @@ class LibraryTests(unittest.TestCase):
         with self.store.db() as db:
             db.execute("DELETE FROM progress WHERE mode='flashcards' AND item_id!='茶'")
         prompt=self.store.next_prompt('flashcards')
-        self.assertEqual(prompt['text'],'茶')
+        self.assertEqual(prompt['item']['text'],'茶')
         before=self.store.state()['stats']['attempts']
         self.store.delete_entries(['茶'])
         state=self.store.state()
@@ -65,13 +65,12 @@ class LibraryTests(unittest.TestCase):
         self.store.add({'source':'catalog','id':'茶'})
         self.assertTrue(next(i for i in self.store.state()['items'] if i['id']=='茶')['enrolled'])
 
-    def test_generation_can_reintroduce_deleted_word_for_next_session(self):
-        session=self.store.state()['session']
+    def test_generation_can_reintroduce_deleted_word_immediately(self):
         self.store.delete_entries(['茶'])
         result=self.store.generate_entries({'source':'category','category':'tea','count':1})
         self.assertEqual([i['text'] for i in result['items']],['茶'])
         with self.store.db() as db:
-            self.assertTrue(all(p['eligible_after']==session for p in db.execute("SELECT * FROM progress WHERE item_id='茶'")))
+            self.assertTrue(all(p['eligible_after']==0 for p in db.execute("SELECT * FROM progress WHERE item_id='茶'")))
 
     def test_new_mastery_can_automatically_reintroduce_deleted_word(self):
         from nihowdy.vocabulary import VocabularyPolicy
@@ -83,7 +82,9 @@ class LibraryTests(unittest.TestCase):
         self.assertTrue(next(i for i in self.store.state()['items'] if i['id']=='茶')['enrolled'])
 
     def test_deleted_waiting_word_does_not_auto_unlock(self):
-        self.assertTrue(next(i for i in self.store.state()['items'] if i['id']=='電腦')['waiting'])
+        with self.store.db() as db:
+            db.execute("DELETE FROM progress WHERE item_id='電腦'")
+            db.execute("UPDATE items SET data=json_set(data,'$.requested',json('true')) WHERE id='電腦'")
         self.store.delete_entries(['電腦'])
         self.master('電')
         self.master('腦','drawing')
@@ -120,17 +121,14 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(len({i['text'] for i in result['items']}),2)
         self.assertTrue(all(self.store.vocabulary.addition_weight(i['text'])>0 for i in result['items']))
 
-    def test_generation_from_category_is_deferred_and_uses_prerequisites(self):
-        state=self.store.state()
-        session=state['session']
+    def test_generation_from_category_is_immediate(self):
         result=self.store.generate_entries({'source':'category','category':'food','count':2})
         self.assertEqual(result['added'],2)
         with self.store.db() as db:
             for item in result['items']:
-                self.assertEqual(self.store._missing_prerequisites(db,item),[])
                 progress=list(db.execute('SELECT * FROM progress WHERE item_id=?',(item['id'],)))
                 self.assertEqual({p['mode'] for p in progress},{'flashcards','drawing'})
-                self.assertTrue(all(p['eligible_after']==session for p in progress))
+                self.assertTrue(all(p['eligible_after']==0 for p in progress))
 
     def test_custom_category_matches_existing_catalog_and_plural_terms(self):
         result=self.store.generate_entries({'source':'category','category':'coffee','count':1})
