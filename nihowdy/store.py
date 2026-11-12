@@ -15,10 +15,11 @@ from zoneinfo import ZoneInfo
 
 from .content import (component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
                       plain_pinyin, sources_for, starter_items)
-from .learning import (LEVELS, correct_answer, review_trials,
+from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
 from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
 from .vocabulary import VocabularyPolicy, reading_key
+from .taiwan import load_taiwan
 
 
 def encode(value):
@@ -32,6 +33,7 @@ class Store:
         self.rng = rng or random.Random()
         self.now = now or (lambda: datetime.now(timezone.utc))
         self.hanzi = load_hanzi()
+        self.taiwan = load_taiwan()
         self.vocabulary = VocabularyPolicy()
         self._neighbor_cache = {}
         self._parts_cache = {}
@@ -65,6 +67,7 @@ class Store:
             for key, value in {"probability": .05, "timezone": "America/New_York", "interests": [],
                                "interest_text": "", "onboarded": False, "schema": 1}.items():
                 db.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (key, encode(value)))
+            self._migrate_drawing(db)
             if not db.execute("SELECT 1 FROM items LIMIT 1").fetchone():
                 for item in starter_items():
                     if item['kind'] == 'word':
@@ -72,6 +75,33 @@ class Store:
                 for word in ["我", "你", "也", "要", "喝", "水", "茶", "好", "一", "二", "三", "電腦"]:
                     if not self._enroll(db, word):
                         self._add_prerequisites(db,self._item(db,word))
+
+    def _migrate_drawing(self, db):
+        columns = {row[1] for row in db.execute('PRAGMA table_info(progress)')}
+        if 'guided_completions' not in columns:
+            db.execute('ALTER TABLE progress ADD COLUMN guided_completions INTEGER DEFAULT 0')
+        if self._settings(db).get('schema', 1) >= 2:
+            return
+        # Preserve the meaning of existing difficulty levels and saved plans.
+        db.execute("UPDATE progress SET level=level+1,guided_completions=5 WHERE mode='drawing' AND level>=1")
+        db.execute("UPDATE prompts SET level=level+1 WHERE mode='drawing' AND level>=1")
+        def migrate_progress(p):
+            p.setdefault('guided_completions', 0)
+            if p.get('mode') == 'drawing' and p['level'] >= 1:
+                p['level'] += 1
+                p['guided_completions'] = 5
+        for row in db.execute('SELECT id,result FROM prompts WHERE result IS NOT NULL').fetchall():
+            result = json.loads(row['result'])
+            if result.get('progress'):
+                migrate_progress(result['progress'])
+                db.execute('UPDATE prompts SET result=? WHERE id=?', (encode(result), row['id']))
+        for row in db.execute('SELECT id,data FROM items').fetchall():
+            item = json.loads(row['data'])
+            if item.get('deleted_state'):
+                for p in item['deleted_state'].get('progress', []):
+                    migrate_progress(p)
+                db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), row['id']))
+        db.execute("INSERT OR REPLACE INTO settings VALUES ('schema','2')")
 
     @contextmanager
     def db(self):
@@ -396,12 +426,16 @@ class Store:
     def _drawing_plan(self, item, level):
         result = []
         for index, ch in enumerate(item["text"]):
+            if level == 1:
+                result.append({'index': index, 'character': ch, 'missing': [], 'template': [],
+                               'components': [], 'guide': self.taiwan[ch]})
+                continue
             data = self.hanzi[ch]
             groups = component_groups(ch, self.hanzi)
             if level == 0 and not groups:
                 continue
             n = len(data["strokes"])
-            missing = sorted(self.rng.sample(range(n), max(1, min(3, n // 3)))) if level in (1, 2) else list(range(n))
+            missing = sorted(self.rng.sample(range(n), max(1, min(3, n // 3)))) if level in (2, 3) else list(range(n))
             components = []
             if level == 0:
                 for group in groups:
@@ -429,8 +463,12 @@ class Store:
             if outstanding:
                 return self._public_prompt(db, outstanding)
             candidates = []
+            awaiting_taiwan = False
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered' AND eligible_after<?", (mode, session)):
                 item = self._item(db, row["item_id"])
+                if mode == 'drawing' and row['level'] == 1 and not all(ch in self.taiwan for ch in item['text']):
+                    awaiting_taiwan = True
+                    continue
                 if mode == "phrases" and item['id'] not in phrase_options:
                     continue
                 candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode))))
@@ -444,6 +482,8 @@ class Store:
             if previous and len(candidates) > 1:
                 candidates = [c for c in candidates if c[0] != previous[0]]
             selected = weighted_choice(candidates, self.rng)
+            if selected is None and awaiting_taiwan:
+                return {'empty': True, 'mode': mode, 'message': 'Guided practice is waiting for Taiwan stroke templates. Run python3 scripts/prepare_taiwan.py and restart the app. Other vocabulary modes remain available.'}
             if selected is None:
                 return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need more than three words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your eligible deck is complete. Start a new session for newly added words, or come back for daily reviews."}
             item = self._item(db, selected)
@@ -466,14 +506,18 @@ class Store:
             out["english"] = item["english"]
         if (mode == "flashcards" and level < 2) or (mode == "phrases" and level < 2):
             out["text"] = item["text"]
-        if (mode in ("flashcards", "phrases") and level == 0) or (mode == "drawing" and level <= 1):
+        if (mode in ("flashcards", "phrases") and level == 0) or (mode == "drawing" and level <= 2):
             out["pinyin"] = item["pinyin"]
         if mode == "drawing":
             out["characters"] = [{"index": d["index"], "template": d["template"],
                                    "slots": [{"id": c["id"], "center": c["center"]} for c in d["components"]],
-                                   "components": [{"id": c["id"], "strokes": c["strokes"]} for c in sorted(d["components"], key=lambda x:x["id"])]}
+                                   "components": [{"id": c["id"], "strokes": c["strokes"]} for c in sorted(d["components"], key=lambda x:x["id"])],
+                                   **({'guide': d['guide']} if 'guide' in d else {})}
                                   for d in json.loads(row["payload"])["drawing"]]
             out["total_characters"] = len(item["text"])
+            if level == 1:
+                out.update(guided_completions=p['guided_completions'], guided_required=5,
+                           stroke_standard='Taiwan MOE')
         if row["result"]:
             out["result"] = json.loads(row["result"])
         return out
@@ -607,10 +651,10 @@ class Store:
     def _score(self, db, prompt, correct, hint=False):
         item = self._item(db, prompt["item_id"])
         old = dict(db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (item["id"], prompt["mode"])).fetchone())
-        updated = transition(old, correct, self.lowest(item, prompt["mode"]), len(LEVELS[prompt["mode"]])-1, self._today(db))
+        updated = transition(old, correct, self.lowest(item, prompt["mode"]), len(LEVELS[prompt["mode"]])-1, self._today(db), guided=prompt['mode']=='drawing')
         if updated["status"] == "mastered":
             updated["cycle"] += 1
-        columns = ["level", "failures", "boost", "attempts", "status", "mastered_on", "checked_on", "cycle"]
+        columns = ["level", "failures", "boost", "attempts", "status", "mastered_on", "checked_on", "cycle", "guided_completions"]
         db.execute("UPDATE progress SET " + ",".join(c+"=?" for c in columns) + " WHERE item_id=? AND mode=?",
                    [updated[c] for c in columns] + [item["id"], prompt["mode"]])
         db.execute("INSERT INTO attempts(prompt_id,item_id,mode,correct,hint,created_at) VALUES (?,?,?,?,?,?)",
@@ -620,6 +664,10 @@ class Store:
         db.execute("UPDATE prompts SET scored=1, hint=? WHERE id=?", (hint, prompt["id"]))
         if updated["status"] == "mastered":
             message = "Mastered! This item is resting in your bin."
+        elif correct and prompt['mode'] == 'drawing' and prompt['level'] == 1:
+            message = f"{updated['guided_completions']} of 5 whole-word guided repetitions complete. "
+            message += ('Next time, add missing strokes.' if updated['guided_completions'] == 5 else
+                        'This word returns through random practice.')
         elif updated["level"] > old["level"]:
             message = f"Moving up to {LEVELS[prompt['mode']][updated['level']]} next time."
         elif updated["level"] < old["level"]:
@@ -662,9 +710,14 @@ class Store:
                             for point in s:
                                 if not isinstance(point, list) or len(point) != 2 or any(not isinstance(v, (int, float)) or not -100 <= v <= 1124 for v in point):
                                     raise ValueError("Invalid drawing coordinates.")
-                        data = self.hanzi[plan["character"]]
-                        reference = [[[x, 900-y] for x, y in data["medians"][j]] for j in plan["missing"]]
-                        details.append(shape_score(strokes, reference, normalize=prompt["level"]==3))
+                        if prompt['level'] == 1:
+                            reference = plan['guide']['medians']
+                            details.append({'correct': len(strokes) == len(reference) and
+                                            all(guided_stroke_correct(s, t) for s, t in zip(strokes, reference))})
+                        else:
+                            data = self.hanzi[plan["character"]]
+                            reference = [[[x, 900-y] for x, y in data["medians"][j]] for j in plan["missing"]]
+                            details.append(shape_score(strokes, reference, normalize=prompt["level"]==4))
                 correct = all(d["correct"] for d in details)
             else:
                 text = answer.get("text", "")
@@ -832,12 +885,12 @@ class Store:
     def backup(self):
         with self.db() as db:
             tables = ["settings", "items", "progress", "sessions", "prompts", "attempts", "trials", "expansions", "pending"]
-            return {"format": "ni-howdy", "version": 1,
+            return {"format": "ni-howdy", "version": 2,
                     "tables": {t: [dict(r) for r in db.execute("SELECT * FROM "+t)] for t in tables}}
 
     def restore(self, backup):
-        if backup.get("format") != "ni-howdy" or backup.get("version") != 1:
-            raise ValueError("Choose a Ni-howdy version 1 backup.")
+        if backup.get("format") != "ni-howdy" or backup.get("version") not in (1, 2):
+            raise ValueError("Choose a Ni-howdy version 1 or 2 backup.")
         allowed = ["settings", "items", "progress", "sessions", "prompts", "attempts", "trials", "expansions", "pending"]
         if set(backup.get("tables", {})) != set(allowed):
             raise ValueError("Backup is incomplete.")
@@ -845,11 +898,14 @@ class Store:
             for table in allowed:
                 columns = [r[1] for r in db.execute("PRAGMA table_info("+table+")")]
                 rows = backup["tables"][table]
+                if table == 'progress' and backup['version'] == 1 and isinstance(rows, list):
+                    rows = [dict(row, guided_completions=row.get('guided_completions', 0)) for row in rows]
                 if not isinstance(rows, list) or any(set(row) != set(columns) for row in rows):
                     raise ValueError("Invalid backup records.")
                 db.execute("DELETE FROM "+table)
                 db.executemany("INSERT INTO "+table+"("+",".join(columns)+") VALUES ("+",".join("?" for _ in columns)+")",
                                [[row[c] for c in columns] for row in rows])
+            self._migrate_drawing(db)
             settings = self._settings(db)
             if not 0 <= settings["probability"] <= 1:
                 raise ValueError("Invalid review probability in backup.")

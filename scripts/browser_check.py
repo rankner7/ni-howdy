@@ -137,8 +137,44 @@ def run():
                 page.get_by_role('button',name='Check entry').click()
                 page.wait_for_selector('.feedback.success')
 
+                configure('我','drawing',1)
+                navigate('drawing')
+                for repetition in range(1,6):
+                    assert f'Whole-word repetition {repetition} of 5' in page.locator('#drawing-area').inner_text()
+                    with store.db() as db:
+                        plan=json.loads(db.execute("SELECT payload FROM prompts WHERE mode='drawing' ORDER BY rowid DESC LIMIT 1").fetchone()[0])
+                    tracks=plan['drawing'][0]['guide']['medians']
+                    def trace_guided(points):
+                        box=page.locator('canvas').bounding_box()
+                        page.mouse.move(box['x']+points[0][0]/1024*box['width'],box['y']+points[0][1]/1024*box['height'])
+                        page.mouse.down()
+                        for x,y in points[1:]:
+                            page.mouse.move(box['x']+x/1024*box['width'],box['y']+y/1024*box['height'],steps=3)
+                        page.mouse.up()
+                    if repetition==1:
+                        page.get_by_role('button',name='Check entry').click()
+                        assert 'Trace every stroke' in page.locator('#practice-error').inner_text()
+                        trace_guided(list(reversed(tracks[0])))
+                        assert 'Try this stroke again' in page.locator('.stroke-status').inner_text()
+                    for index,points in enumerate(tracks):
+                        trace_guided(points)
+                        if repetition==1 and index==0:
+                            page.reload(wait_until='networkidle')
+                            assert 'Stroke 2 of 7' in page.locator('.stroke-status').inner_text()
+                    assert 'Character complete' in page.locator('.stroke-status').inner_text()
+                    if repetition==1:
+                        page.screenshot(path=str(ROOT/'artifacts/guided-desktop.png'),full_page=True)
+                    page.get_by_role('button',name='Check entry').click()
+                    page.wait_for_selector('.feedback.success')
+                    assert f'{repetition} of 5 whole-word guided repetitions complete' in page.locator('.feedback').inner_text()
+                    if repetition<5:
+                        page.get_by_role('button',name='Next prompt').click()
+                        page.wait_for_selector('.stroke-status')
+                with store.db() as db:
+                    assert db.execute("SELECT level,guided_completions FROM progress WHERE item_id='我' AND mode='drawing'").fetchone()[:]==(2,5)
+
                 # Empty missing-stroke templates must fail as a whole word.
-                configure('電腦','drawing',1)
+                configure('電腦','drawing',2)
                 navigate('drawing')
                 page.get_by_role('button',name='Save character & continue').click()
                 assert 'Character 2 of 2' in page.locator('.drawing-progress').inner_text()
@@ -159,7 +195,7 @@ def run():
                     page.get_by_role('button',name='Check entry' if index==len(plan['drawing'])-1 else 'Save character & continue').click()
                 page.wait_for_selector('.feedback.success')
 
-                configure('一','drawing',3)
+                configure('一','drawing',4)
                 navigate('drawing')
                 page.wait_for_selector('canvas')
                 box=page.locator('canvas').bounding_box()

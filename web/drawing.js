@@ -1,4 +1,5 @@
 import {$, $$, escape, glyphSVG} from './ui.js';
+import {setupGuided} from './guided.js';
 
 export class Drawing {
   constructor(root, prompt) {
@@ -11,15 +12,18 @@ export class Drawing {
   }
   persist() { sessionStorage.setItem(this.key, JSON.stringify({index:this.index,entries:this.entries,strokes:this.strokes,placements:this.placements})); }
   render() {
+    this.dispose?.();
     const part=this.prompt.characters[this.index];
+    const guided=this.prompt.level===1;
     this.root.innerHTML=`<div class="drawing-progress"><span>Character ${part.index+1} of ${this.prompt.total_characters}</span><div>${this.prompt.characters.map((c,i)=>`<i class="${i<this.index?'done':i===this.index?'current':''}"></i>`).join('')}</div></div>
       <div class="drawing-board ${this.prompt.level===0?'assembly':''}">
-        <div class="board-grid"></div>${glyphSVG(part.template,'template-glyph')}
+        <div class="board-grid"></div>${guided?`<svg class="template-glyph" viewBox="0 0 1024 1024" aria-hidden="true">${part.guide.strokes.map(d=>`<path d="${escape(d)}"/>`).join('')}</svg>`:glyphSVG(part.template,'template-glyph')}
         ${this.prompt.level===0 ? '<div class="component-slots"></div>' : '<canvas width="1024" height="1024" aria-label="Draw the character here"></canvas>'}
       </div>
-      ${this.prompt.level===0 ? '<p class="fine-print center">Drag each piece into place, or select a piece and then a slot.</p><div class="component-palette"></div>' : '<div class="drawing-tools"><button type="button" class="text-button undo">↶ Undo stroke</button><button type="button" class="text-button clear">Clear</button><span>Shape matters. Stroke order doesn’t.</span></div>'}
-      <p class="fine-print center">${this.prompt.level===0?'Arrange the character’s components.':this.prompt.level<3?'Complete the pale character by adding its missing strokes.':'Draw the full character from memory.'}</p>`;
-    if (this.prompt.level===0) this.setupComponents(part); else this.setupCanvas();
+      ${this.prompt.level===0 ? '<p class="fine-print center">Drag each piece into place, or select a piece and then a slot.</p><div class="component-palette"></div>' : `<div class="drawing-tools"><button type="button" class="text-button undo">↶ Undo stroke</button><button type="button" class="text-button clear">Clear</button>${guided?'<button type="button" class="text-button replay">↻ Show stroke</button>':'<span>Shape matters. Stroke order doesn’t.</span>'}</div>`}
+      ${guided?`<p class="stroke-status fine-print center" role="status" aria-live="polite"></p><p class="fine-print center">Whole-word repetition ${Math.min(5,this.prompt.guided_completions+1)} of 5 · Taiwan stroke order</p><p class="fine-print center">Stroke source: <a href="https://stroke-order.learningweb.moe.edu.tw/" target="_blank" rel="noopener noreferrer">中華民國教育部</a></p>`:''}
+      <p class="fine-print center">${this.prompt.level===0?'Arrange the character’s components.':guided?'Trace each highlighted stroke. Accepted strokes fit the template; retries do not count as misses.':this.prompt.level<4?'Complete the pale character by adding its missing strokes.':'Draw the full character from memory.'}</p>`;
+    if (this.prompt.level===0) this.setupComponents(part); else if(guided)setupGuided(this,part);else this.setupCanvas();
     this.persist();
   }
   setupCanvas() {
@@ -61,6 +65,7 @@ export class Drawing {
   }
   saveCharacter() {
     const part=this.prompt.characters[this.index];
+    if(this.prompt.level===1 && this.strokes.length!==part.guide.medians.length)throw new Error('Trace every stroke before continuing.');
     if(this.prompt.level===0 && part.slots.some((_,i)=>!this.placements[i])) throw new Error('Place every component before continuing.');
     this.entries[this.index]=this.prompt.level===0 ? {placements:[...this.placements]} : {strokes:this.strokes};
     if(this.index===this.prompt.characters.length-1) {this.persist();return this.entries;}

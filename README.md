@@ -27,9 +27,9 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 ## Learning rules
 
 - **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning.
-- **Drawing:** assemble components → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time.
+- **Drawing:** assemble components → guided drawing in Taiwan stroke order → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time. Guided drawing animates the next stroke, checks your trace, and fits accepted strokes to the template. Complete the **whole word five times**, once per random practice appearance, before advancing; retries do not erase completed repetitions or count as misses. Progress survives restarts.
 - **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation. A **Listen to the phrase** button is available at every difficulty, including Hard, and after answering. Playback uses the local voice, is cached, and does not count as an incorrect attempt.
-- One correct answer advances a difficulty. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.
+- One correct answer advances a difficulty, except guided drawing, which requires five whole-word completions. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.
 - Passing the hardest level moves that skill into the mastered bin. Each unchecked local calendar day gets one independent 5% review trial. A returning item appears at its hardest level. Reloads never reroll checked dates.
 - Opening the information icon immediately records one incorrect attempt. You may finish for feedback, but the prompt cannot then advance you. Reopening the explanation and resubmitting cannot count additional failures.
 - Selection is random, weighted toward lower difficulties and unseen items. Base weights halve at each level; unseen items receive 2× weight, and repeated lowest-level failure blocks receive up to a 4× recovery boost.
@@ -72,8 +72,8 @@ Without it, the app uses its local spelling lexicon and basic grammar rules. No 
 
 - Python HTTP service + SQLite, with browser-native ES modules and CSS. Learning rules, storage, dictionary content, speech, and optional providers are separate modules.
 - Written form (`Hant`) and pronunciation region (`TW`) are separate data fields. Progress includes a default local learner identity, preparing the model for future accounts. Simplified/Mainland content and accounts are not yet exposed in the UI.
-- Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and all drawing grades ignore stroke order/direction. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
-- The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. The app does not teach that ordering. New entries outside the supported drawing set remain unavailable for addition.
+- Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and missing-stroke/free-drawing grades ignore stroke order/direction. Guided drawing checks each stroke in order and direction against a Taiwan template. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
+- The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. These templates are used for component assembly and the later shape-only levels. Guided drawing uses separate Taiwan MOE outlines and direction tracks, never a PRC-order fallback. Existing progress stays at its equivalent difficulty when the new level is inserted; existing mastered entries stay mastered. New entries outside the supported drawing set remain unavailable for addition.
 - Prepared single-character audio uses reading-specific Taiwan MOE recordings, including 我 (wǒ) and 好 (hǎo). Other entries use an AI-generated Taiwan Mandarin voice. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Isolated-character synthesis can be unclear; preparation prefers the reference recordings and bypasses older synthesized clips automatically. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
 - Local phrase generation uses curated word roles and varied constrained grammar patterns, so its vocabulary coverage and sentence variety are bounded. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
 - Backup/restore includes library, settings, sessions, and history. It replaces the local database contents after confirmation; it does not copy voice binaries or generated audio.
@@ -89,6 +89,18 @@ To prepare or refresh character recordings separately after updating dependencie
 
 Original recordings remain unchanged under `.data/audio/recordings/`, with source URLs, hashes, reading-specific identifiers, and playback boundaries in `index.json`. Setup needs internet access; practice does not. If preparation cannot safely separate the character from later narration, it leaves synthesis in use for that entry and reports the skipped recording.
 
+## Taiwan guided drawing data
+
+`./setup.sh` prepares the full available Taiwan MOE template set for offline use. To update an existing installation without reinstalling audio:
+
+```bash
+python3 scripts/prepare_taiwan.py
+```
+
+Restart the app afterward. You can also pass a downloaded `g0v/zh-stroke-data` source `.tar.gz` as the argument. The importer writes `nihowdy/assets/taiwan-strokes.json.gz` and excludes synthetic characters without original XML data. Words missing any Taiwan template wait at Guided until support is available; other modes remain usable.
+
+Preparation reports the number of installed characters and any exclusions. Coordinates outside the nominal source canvas are fitted uniformly with the whole character, preserving proportions and stroke direction; malformed or non-finite coordinates remain excluded. Rerun preparation after importer updates to rebuild previously excluded templates. See [Taiwan stroke sources](docs/taiwan-strokes.md) for provenance and usage terms. Backup version 2 includes repetition counts and still accepts version 1 backups.
+
 ## Checks
 
 The learning and persistence tests run without extra packages:
@@ -97,6 +109,8 @@ The learning and persistence tests run without extra packages:
 python3 -m unittest discover -v
 ```
 
+Guided progression and template import can be checked without the dictionary data using `python3 -m unittest tests.test_guided tests.test_learning`. Canvas event/state checks run with `node tests/guided_ui.mjs`; they do not replace a browser layout check.
+
 For browser checks, install development dependencies and use an existing Chrome installation:
 
 ```bash
@@ -104,4 +118,4 @@ For browser checks, install development dependencies and use an existing Chrome 
 .venv/bin/python scripts/browser_check.py
 ```
 
-Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.
+Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, guided tracing and five repetitions, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.

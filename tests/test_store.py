@@ -95,7 +95,7 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.next_prompt('flashcards')['id'], p['id'])
 
     def test_drawing_no_ink_fails(self):
-        self.only('一','drawing',1)
+        self.only('一','drawing',2)
         prompt = self.store.next_prompt('drawing')
         result = self.store.answer(prompt['id'], {'drawings':[{'strokes':[]}]})
         self.assertFalse(result['correct'])

@@ -11,7 +11,7 @@ export async function practice(mode, state, onUpdate, addExample) {
   const main=$('#main'); const [kicker,title,description]=COPY[mode];
   main.innerHTML=pageHeader(kicker,title,description,'<button class="secondary add-example">＋ Add example</button>')+'<div class="practice-layout"><section id="practice-card" class="practice-card"><div class="loading">Choosing your next prompt…</div></section><aside class="practice-aside"></aside></div>';
   $('.add-example').onclick=addExample;
-  $('.practice-aside').innerHTML=`<div class="side-note"><span class="eyebrow">HOW YOU GROW</span><h3>A little challenge.<br>A little more confidence.</h3><ol><li>One correct answer moves you up a level.</li><li>Three consecutive misses move you down.</li><li>Pass the hardest level to master it.</li></ol><button class="text-button example-button">See a worked example ↗</button></div><div class="side-note muted-note"><span class="tiny-symbol">✧</span><h4>Understanding is part of learning.</h4><p>Opening the information icon counts as one miss. Take your time with the explanation.</p></div><button class="secondary full new-session">Start a fresh session ↗</button><p class="fine-print">Newly discovered words join your next session.</p>`;
+  $('.practice-aside').innerHTML=`<div class="side-note"><span class="eyebrow">HOW YOU GROW</span><h3>A little challenge.<br>A little more confidence.</h3><ol><li>${mode==='drawing'?'Guided drawing takes five whole-word repetitions, spread across random practice. Other levels take one correct answer.':'One correct answer moves you up a level.'}</li><li>Three consecutive misses move you down.</li><li>Pass the hardest level to master it.</li></ol><button class="text-button example-button">See a worked example ↗</button></div><div class="side-note muted-note"><span class="tiny-symbol">✧</span><h4>Understanding is part of learning.</h4><p>Opening the information icon counts as one miss. Take your time with the explanation.</p></div><button class="secondary full new-session">Start a fresh session ↗</button><p class="fine-print">Newly discovered words join your next session.</p>`;
   $('.example-button').onclick=()=>example(mode);
   $('.new-session').onclick=async()=>{try{await api('session',{});await load();await onUpdate();}catch(e){toast(e.message);}};
   let prompt, drawing, busy=false, audio;
@@ -50,7 +50,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       </form><div id="feedback" aria-live="polite"></div>`;
     $('.prompt-info',card).onclick=async()=>{try{const result=await api('info',{id:prompt.id});prompt.hint=true;showInfo(result.item,{penalty:true});await onUpdate();$('.attempt-counter').textContent='Hint used';}catch(e){toast(e.message);}};
     if(mode==='drawing'){
-      drawing=new Drawing($('#drawing-area'),prompt);updateDrawingButton();
+      drawing?.dispose?.();drawing=new Drawing($('#drawing-area'),prompt);updateDrawingButton();
     }else{
       const input=$('#answer');input.value=sessionStorage.getItem('nihowdy:answer:'+prompt.id)||'';
       let timer;
@@ -113,7 +113,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       $('.after-info').onclick=()=>showInfo(result.item);
       $('.prompt-info').onclick=()=>showInfo(result.item);
       $('.next-prompt').onclick=async()=>{audio?.pause();audio?.dispose?.();if(audio?.src)URL.revokeObjectURL(audio.src);audio=null;await load();};
-      if(drawing)drawing.clearSaved();sessionStorage.removeItem('nihowdy:answer:'+prompt.id);await onUpdate();$('.next-prompt').focus();
+      if(drawing){drawing.dispose?.();drawing.clearSaved();}sessionStorage.removeItem('nihowdy:answer:'+prompt.id);await onUpdate();$('.next-prompt').focus();
     }catch(e){$('#practice-error').textContent=e.message;$('.check-answer').disabled=false;if(drawing)updateDrawingButton();else $('.check-answer').textContent='Check answer ↵';}
     finally{busy=false;}
   }
@@ -122,7 +122,7 @@ export async function practice(mode, state, onUpdate, addExample) {
 
 async function example(mode){
   const e=await api('example');
-  const content=mode==='phrases'?`<div class="example-hanzi" lang="zh-Hant">${e.phrase}</div><p class="pinyin center">${e.phrase_pinyin}</p><p class="center">${e.phrase_english}</p><p>Start by translating characters with pinyin. Later, read just the characters. At the hardest level, use the pinyin keyboard to compose the Chinese sentence, including 。</p>`:mode==='drawing'?`${glyphSVG(e.strokes,'example-glyph')}<p class="center"><strong>${e.text}</strong> · ${e.pinyin} · ${e.english}</p><p>Place components into the character’s layout. Then practise adding missing strokes. At the hardest level, draw the full shape from its English meaning. Stroke order and direction are not graded.</p>`:`<div class="example-hanzi" lang="zh-Hant">${e.text}</div><p class="pinyin center">${e.pinyin}</p><p>Type <strong>wood</strong> for this example. At Medium, pinyin is replaced by audio. At Hard, you hear the word without seeing its characters.</p>`;
+  const content=mode==='phrases'?`<div class="example-hanzi" lang="zh-Hant">${e.phrase}</div><p class="pinyin center">${e.phrase_pinyin}</p><p class="center">${e.phrase_english}</p><p>Start by translating characters with pinyin. Later, read just the characters. At the hardest level, use the pinyin keyboard to compose the Chinese sentence, including 。</p>`:mode==='drawing'?`${glyphSVG(e.strokes,'example-glyph')}<p class="center"><strong>${e.text}</strong> · ${e.pinyin} · ${e.english}</p><p>Place components into the character’s layout. Next, trace each stroke in Taiwan order. Complete the whole word five times across random practice appearances, then practise adding missing strokes. At the hardest level, draw the full shape from its English meaning. Guided practice checks stroke order and direction; later levels grade shape.</p>`:`<div class="example-hanzi" lang="zh-Hant">${e.text}</div><p class="pinyin center">${e.pinyin}</p><p>Type <strong>wood</strong> for this example. At Medium, pinyin is replaced by audio. At Hard, you hear the word without seeing its characters.</p>`;
   const d=modal('A quick example',`<span class="pill">Ungraded · just for learning</span>${content}<button class="primary full example-done">Got it. Let’s practise →</button>`);
   $('.example-done',d).onclick=()=>d.close();
 }

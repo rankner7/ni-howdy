@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 LEVELS = {
     "flashcards": ["Easy", "Medium", "Hard"],
-    "drawing": ["Components", "Easy", "Medium", "Hard"],
+    "drawing": ["Components", "Guided", "Easy", "Medium", "Hard"],
     "phrases": ["Easy", "Medium", "Hard"],
 }
 
@@ -18,13 +18,16 @@ def correct_answer(text, accepted):
     return normalize_answer(text) in {normalize_answer(a) for a in accepted}
 
 
-def transition(progress, correct, lowest, highest, today):
+def transition(progress, correct, lowest, highest, today, guided=False):
     """Return updated progress, preserving independent per-mode state."""
     p = dict(progress)
     p["attempts"] += 1
     if correct:
         p.update(failures=0, boost=0)
-        if p["level"] == highest:
+        if guided and p["level"] == 1:
+            p["guided_completions"] = min(5, p.get("guided_completions", 0) + 1)
+            p.update(level=2 if p["guided_completions"] == 5 else 1, status="active")
+        elif p["level"] == highest:
             p.update(status="mastered", mastered_on=today, checked_on=today)
         else:
             p.update(level=p["level"] + 1, status="active")
@@ -37,6 +40,8 @@ def transition(progress, correct, lowest, highest, today):
             else:
                 p.update(level=p["level"] - 1, status="active", mastered_on=None,
                          checked_on=None)
+                if guided and p["level"] == 1:
+                    p["guided_completions"] = 0
     return p
 
 
@@ -138,3 +143,34 @@ def shape_score(drawn, reference, normalize=False):
     weakest = min(coverage(resample([s]), ink) for s in reference)
     return {"correct": recall >= .84 and precision >= .80 and weakest >= .65,
             "coverage": round(recall, 3), "precision": round(precision, 3)}
+
+
+def guided_stroke_correct(stroke, target):
+    """Match a trace in position and direction, including bends and hooks.
+
+    Discrete Frechet distance preserves traversal order, unlike the later
+    shape-only levels. Equal spacing makes mouse event frequency immaterial.
+    """
+    if len(stroke) < 2 or len(target) < 2:
+        return False
+    if math.dist(stroke[0], target[0]) > 85 or math.dist(stroke[-1], target[-1]) > 85:
+        return False
+    # A short dot can fit entirely inside the distance tolerance backwards.
+    if sum((stroke[-1][i] - stroke[0][i]) * (target[-1][i] - target[0][i]) for i in (0, 1)) <= 0:
+        return False
+    ink, guide = resample([stroke], 16), resample([target], 16)
+    def length(points):
+        return sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+    target_length = length(target)
+    if not .65 * target_length <= length(stroke) <= 1.6 * target_length:
+        return False
+    previous = [float('inf')] * len(guide)
+    for i, point in enumerate(ink):
+        current = []
+        for j, expected in enumerate(guide):
+            distance = math.dist(point, expected)
+            best = 0 if i == j == 0 else min(previous[j],
+                previous[j-1] if j else float('inf'), current[j-1] if j else float('inf'))
+            current.append(max(distance, best))
+        previous = current
+    return previous[-1] <= 75
