@@ -123,3 +123,13 @@ Chinese has been adapted to Traditional characters and Taiwan vocabulary with
 OpenCC; this does not guarantee Taiwan usage. Pinyin and word boundaries are
 computed locally and may need correction. See [data details](data/README.md) for
 sources, licenses, limitations, and rebuilding the bundled corpus.
+
+Phrase selection reserves space separately for corpus sentences and local patterns
+(up to four active entries per source when both are available). Existing progress
+is retained. Corpus and templates receive equal total selection weight before
+recent-history adjustments; local pattern families share the template weight.
+The last eight sentences and the most recent template family receive reduced
+weight, and immediate sentence repeats are avoided when alternatives exist.
+Short action, possession, preference and identity patterns use mastered content
+words. When a corpus sentence also matches a local pattern, the corpus source and
+its attribution are preferred.

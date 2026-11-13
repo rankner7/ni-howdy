@@ -41,6 +41,31 @@ class PhraseStoreTests(unittest.TestCase):
             self.assertTrue(example['english'])
         self.assertEqual(self.store.backup(), before)
 
+    def test_corpus_is_admitted_despite_full_template_queue(self):
+        from nihowdy.phrases import candidates
+        self.master('我', '你', '他', '也', '要', '喝', '喜歡', '吃', '茶', '水', '麵包')
+        with self.store.db() as db:
+            items = self.store._items(db)
+            templates = [p for p in candidates(items, self.store._mastered(db)) if p][:8]
+            for item in templates:
+                db.execute('INSERT OR IGNORE INTO items VALUES (?,?)', (item['id'], encode(item)))
+                self.store._enroll(db, item['id'])
+            options = self.store._phrase_options(db, generate=True)
+            self.assertGreaterEqual(sum(f == 'corpus' for f in options.values()), 2)
+
+    def test_sources_get_equal_selection_weight_before_recent_penalties(self):
+        self.master('我', '你', '他', '也', '要', '喝', '喜歡', '吃', '茶', '水', '麵包')
+        captured = []
+        def choose(entries, rng):
+            captured.extend(entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice', side_effect=choose):
+            self.store.next_prompt('phrases')
+        with self.store.db() as db:
+            options = self.store._phrase_options(db)
+        self.assertAlmostEqual(sum(w for key, w in captured if options[key] == 'corpus'), 1)
+        self.assertAlmostEqual(sum(w for key, w in captured if options[key] != 'corpus'), 1)
+
     def test_corpus_can_seed_practice_and_preserves_progress_on_reload(self):
         from tests.test_sentences import RECORD
         self.master('我', '也', '喜歡', '茶')
@@ -128,7 +153,8 @@ class PhraseStoreTests(unittest.TestCase):
                     self.store._enroll(db, item['id'])
             options = self.store._phrase_options(db, generate=True)
             fresh = [i for i in self.store._items(db).values() if i.get('phrase_engine') in (ENGINE_VERSION, 'tatoeba-v1')]
-            self.assertEqual(len(fresh), 8)
+            self.assertGreaterEqual(len(fresh), 4)
+            self.assertLessEqual(len(fresh), 8)
             self.assertGreaterEqual(len(set(options.values())), 3)
             self.assertIn('destinations', options.values())
 

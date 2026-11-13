@@ -140,6 +140,9 @@ def candidates(items, mastered):
         like = functions['喜歡']
         good = resolve('好', 'hǎo', known=True)
         for role, noun in slots(ROLES, known=True):
+            yield sentence([subject, is_word, role], f'{name} {be} a {noun}.',
+                           'identity', 'Subject + 是 + noun identifies a person.')
+        for role, noun in slots(ROLES, known=True):
             yield sentence([subject, is_word, good, role], f'{name} {be} a good {noun}.',
                            'identity', '是 identifies someone. 好 goes directly before a role noun: 好人 means a good person.')
             yield sentence([subject, functions['也'], is_word, role],
@@ -159,6 +162,12 @@ def candidates(items, mastered):
         for group in OBJECT_GROUPS:
             objects = slots(group, known=True)
             for obj, noun in objects:
+                yield sentence([subject, have, obj],
+                               f"{name} {'has' if third else 'have'} {noun}.",
+                               'possession', 'Subject + 有 + object expresses possession.')
+                yield sentence([subject, like, obj],
+                               f"{name} {'likes' if third else 'like'} {noun}.",
+                               'preferences', 'Subject + 喜歡 + object expresses a preference.')
                 yield sentence([subject, functions['也'], have, obj],
                                f"{name} also {'has' if third else 'have'} {noun}.", 'possession',
                                'Subject + 也 + 有 + object. 有 expresses possession or availability.')
@@ -211,6 +220,10 @@ def candidates(items, mastered):
                 continue
             objects = slots(objects, known=True)
             for obj, noun in objects:
+                action = {'drink':'drinks', 'eat':'eats', 'buy':'buys', 'read':'reads',
+                          'study':'studies', 'wear':'wears'}[base] if third else base
+                yield sentence([subject, verb, obj], f'{name} {action} {noun}.',
+                               'actions', 'Subject + action + object describes an action.')
                 for modal in ('要', '想', '喜歡', '可以'):
                     word = functions[modal]
                     if word is None:

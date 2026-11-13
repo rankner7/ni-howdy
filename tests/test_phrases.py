@@ -78,7 +78,8 @@ class PhraseEngineTests(unittest.TestCase):
         self.assertEqual(phrases['我有水，你有茶。']['english'], 'I have water, and you have tea.')
         self.assertEqual(phrases['我有茶，你也有茶。']['english'], 'I have tea, and you have tea too.')
         self.assertIn('我也有電腦。', phrases)
-        self.assertNotIn('我是人。', phrases)  # No local template currently emits this form.
+        self.assertEqual(phrases['我是人。']['english'], 'I am a person.')
+        self.assertEqual(phrases['我有茶。']['english'], 'I have tea.')
         self.assertNotIn('我有蛋，也有電腦。', phrases)  # Related object groups only.
         self.assertFalse(any('有好人' in text or '有學生' in text for text in phrases))
         self.assertTrue(all(eligible(p['tokens'], self.mastered) for p in phrases.values()))

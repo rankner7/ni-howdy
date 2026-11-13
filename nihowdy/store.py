@@ -273,8 +273,15 @@ class Store:
         items = self._items(db)
         mastered = self._mastered(db)
         possible = {phrase_key(i['text']): i for i in phrase_candidates(items, mastered) if i}
+        sourced = {}
         for item in sentences.candidates(items, mastered):
-            possible.setdefault(phrase_key(item['text']), item)
+            key = phrase_key(item['text'])
+            if key in sourced:
+                sourced[key]['answers'] = list(dict.fromkeys(sourced[key]['answers'] + item['answers']))
+                sourced[key]['sources'].extend(s for s in item['sources'] if s not in sourced[key]['sources'])
+            else:
+                sourced[key] = item
+        possible.update(sourced)
         history = self._phrase_history(db)
         options = {}
         for key, (item, progress, _) in history.items():
@@ -293,36 +300,45 @@ class Store:
                     if item['english'] in current['answers']:
                         updated = dict(item, english=current['english'],
                                        answers=list(dict.fromkeys(current['answers'] + item['answers'])),
-                                       explanation=current['explanation'])
+                                       explanation=current['explanation'],
+                                       sources=current.get('sources', item.get('sources', [])),
+                                       explanation_origin=current.get('explanation_origin', item.get('explanation_origin', '')))
                         if updated != item:
                             db.execute('UPDATE items SET data=? WHERE id=?', (encode(updated), item['id']))
                             items[item['id']] = updated
                 options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
         if generate:
-            active = sum(items[item_id].get('phrase_engine') in (ENGINE_VERSION, sentences.ENGINE) and
-                         history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'
-                         for item_id in options)
+            active = {'corpus': 0, 'local': 0}
+            for item_id, family in options.items():
+                if (items[item_id].get('phrase_engine') in (ENGINE_VERSION, sentences.ENGINE)
+                        and history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'):
+                    active['corpus' if family == 'corpus' else 'local'] += 1
             groups = {}
             for key, item in possible.items():
                 if key not in history:
                     groups.setdefault(item['phrase_family'], []).append(item)
-            # Shuffle families and slots separately so a prolific pattern cannot
-            # crowd out other constructions. Keep at most eight fresh phrases.
+            # Each source has its own allowance, so an existing local backlog
+            # cannot prevent corpus sentences entering practice.
             families = list(groups)
             self.rng.shuffle(families)
             for pool in groups.values():
                 self.rng.shuffle(pool)
-            while active < 8 and families:
+            sources = {'corpus' if family == 'corpus' else 'local' for family in groups}
+            sources.update(source for source, count in active.items() if count)
+            limit = 4 if len(sources) == 2 else 8
+            while families:
                 for family in list(families):
+                    source = 'corpus' if family == 'corpus' else 'local'
+                    if active[source] >= limit:
+                        families.remove(family)
+                        continue
                     item = groups[family].pop()
                     db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
                     self._enroll(db, item['id'])
                     options[item['id']] = family
-                    active += 1
+                    active[source] += 1
                     if not groups[family]:
                         families.remove(family)
-                    if active >= 8:
-                        break
         return options
 
     def _save_phrase(self, db, item):
@@ -489,6 +505,16 @@ class Store:
                     family = phrase_options[item_id]
                     totals[family] = totals.get(family, 0) + 1
                 candidates = [(item_id, chance / totals[phrase_options[item_id]]) for item_id, chance in candidates]
+                # Corpus and templates each receive half the available weight.
+                source_totals = {'corpus': 0, 'local': 0}
+                for item_id, chance in candidates:
+                    source_totals['corpus' if phrase_options[item_id] == 'corpus' else 'local'] += chance
+                recent = [r[0] for r in db.execute("SELECT item_id FROM prompts WHERE mode='phrases' ORDER BY rowid DESC LIMIT 8")]
+                last_family = phrase_options.get(recent[0]) if recent else None
+                candidates = [(item_id, chance / source_totals['corpus' if phrase_options[item_id] == 'corpus' else 'local']
+                               * (0.2 if item_id in recent else 1)
+                               * (0.5 if phrase_options[item_id] == last_family and last_family != 'corpus' else 1))
+                              for item_id, chance in candidates]
             previous = db.execute("SELECT item_id FROM prompts WHERE session_id=? AND mode=? ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
             if previous and len(candidates) > 1:
                 candidates = [c for c in candidates if c[0] != previous[0]]
