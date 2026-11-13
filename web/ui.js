@@ -50,7 +50,7 @@ export function infoContent(item, options={}) {
     <div class="character-notes">${(item.characters||[]).map(c => `<article><span class="note-glyph" lang="zh-Hant">${escape(c.character)}</span><div><strong>${escape(c.definition)}</strong><p>${escape(c.note)}</p><small>Construction: ${escape(c.decomposition || 'Not available')}</small></div></article>`).join('')}</div>
     <div class="accepted"><span class="eyebrow">ACCEPTED ENGLISH</span><p>${item.answers.map(escape).join(' · ')}</p></div>
     ${item.kind==='word'?'<section class="context-examples"><span class="eyebrow">EXAMPLE PHRASES</span><p>Finding examples…</p></section>':''}
-    <div class="source-links">${sourceLinks(item.sources)}</div>
+    ${item.kind!=='word'?`<div class="source-links">${sourceLinks(item.sources)}</div>`:''}
     ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}`;
 }
 
@@ -60,7 +60,12 @@ export async function loadExamples(item, root) {
   try {
     const {examples}=await api('word-examples',{id:item.id});
     if(!section.isConnected)return;
-    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}${e.note?`<br><small>${escape(e.note)}</small>`:''}</p><div class="source-links">${sourceLinks(e.sources)}</div>`).join(''):'<p>No examples are available for this word yet.</p>');
+    try {
+      const credits=JSON.parse(localStorage.getItem('example-credits') || '{}');
+      for(const example of examples) credits[example.text]=example.sources;
+      localStorage.setItem('example-credits', JSON.stringify(credits));
+    } catch {}
+    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}</p>`).join(''):'<p>No examples are available for this word yet.</p>');
   } catch { if(section.isConnected)section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span><p>Examples are currently unavailable.</p>'; }
 }
 
