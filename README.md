@@ -31,7 +31,7 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 
 ## Learning rules
 
-- **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning.
+- **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning. The rolling word bin allows up to 30 introduced, unmastered flashcards. New words still enter the library on mastery, but wait for the bin to drop below 30 before introduction. Showing an introduction reserves its slot; acknowledging it does not free the slot. Flashcard mastery or deletion frees a slot. Existing words and returning reviews remain playable even if they bring an older bin above 30; further introductions wait. Drawing and phrase practice have independent progress.
 - **Drawing:** assemble components → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time.
 - **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation.
 - One correct answer advances a difficulty. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.

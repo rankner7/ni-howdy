@@ -32,6 +32,9 @@ def encode(value):
     return json.dumps(value, ensure_ascii=False)
 
 
+FLASHCARD_BIN_CAP = 30
+
+
 class Store:
     def __init__(self, path, rng=None, now=None):
         self.path = Path(path)
@@ -489,10 +492,20 @@ class Store:
                 outstanding = None
             if outstanding:
                 return self._public_prompt(db, outstanding)
+            # An introduction reserves a slot as soon as it is shown. Prompt
+            # history also keeps acknowledged, unattempted words in the bin.
+            flashcard_bin = {r[0] for r in db.execute("""
+                SELECT p.item_id FROM progress p
+                WHERE p.mode='flashcards' AND p.status!='mastered'
+                  AND (p.attempts>0 OR p.level>0 OR p.status='review'
+                       OR p.item_id IN (SELECT item_id FROM prompts WHERE mode='flashcards'))
+            """)} if mode == 'flashcards' else set()
             candidates = []
             awaiting_taiwan = False
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered'", (mode,)):
                 item = self._item(db, row["item_id"])
+                if mode == 'flashcards' and len(flashcard_bin) >= FLASHCARD_BIN_CAP and row['item_id'] not in flashcard_bin:
+                    continue
                 if mode == 'drawing' and row['level'] == 1 and not all(ch in self.taiwan for ch in item['text']):
                     awaiting_taiwan = True
                     continue

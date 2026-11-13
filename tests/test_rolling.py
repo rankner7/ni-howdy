@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from nihowdy.store import Store
+from nihowdy.store import Store, encode
 from nihowdy.vocabulary import VocabularyPolicy
 from tests.test_guided import GUIDE, HANZI, ITEMS
 
@@ -31,6 +31,75 @@ class RollingTests(unittest.TestCase):
     def progress(self, mode):
         with self.store.db() as db:
             return dict(db.execute('SELECT * FROM progress WHERE item_id=? AND mode=?', ('木', mode)).fetchone())
+
+    def fill_flashcard_bin(self, count):
+        with self.store.db() as db:
+            original = self.store._item(db, '木')
+            for index in range(count):
+                item = dict(original, id=f'bin-{index}')
+                db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+                db.execute("INSERT INTO progress(item_id,mode,level,attempts) VALUES (?,'flashcards',0,1)", (item['id'],))
+
+    def test_full_flashcard_bin_blocks_new_introductions_but_not_drawing(self):
+        self.fill_flashcard_bin(30)
+        flashcard = self.store.next_prompt('flashcards')
+        self.assertFalse(flashcard.get('introduction', False))
+        self.assertNotEqual(flashcard.get('text'), None)
+        self.assertTrue(self.store.next_prompt('drawing')['introduction'])
+
+    def test_introduction_reserves_thirtieth_slot_across_reload_and_backup(self):
+        self.fill_flashcard_bin(29)
+        with patch('nihowdy.store.weighted_choice', side_effect=lambda entries, rng: '木'):
+            prompt = self.store.next_prompt('flashcards')
+        self.assertTrue(prompt['introduction'])
+        self.store = self.open_store()
+        self.assertEqual(self.store.next_prompt('flashcards')['id'], prompt['id'])
+        self.store.answer(prompt['id'], {'continue': True})
+        self.store.generate_entries({'source':'category', 'category':'nature', 'count':1})
+        self.store.restore(self.store.backup())
+        captured = []
+        def choose(entries, rng):
+            captured.extend(key for key, _ in entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice', side_effect=choose):
+            self.store.next_prompt('flashcards')
+        self.assertNotIn('一木', captured)
+        with self.store.db() as db:
+            self.assertEqual(db.execute("SELECT attempts FROM progress WHERE item_id='一木' AND mode='flashcards'").fetchone()[0], 0)
+
+    def test_mastery_still_adds_words_and_frees_one_slot(self):
+        self.fill_flashcard_bin(30)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET level=2 WHERE item_id='bin-0'")
+        with patch('nihowdy.store.weighted_choice', return_value='bin-0'):
+            prompt = self.store.next_prompt('flashcards')
+        result = self.store.answer(prompt['id'], {'text':'木'})
+        self.assertIn('一木', result['added'])
+        with patch('nihowdy.store.weighted_choice', return_value='一木'):
+            introduction = self.store.next_prompt('flashcards')
+        self.assertTrue(introduction['introduction'])
+        self.store.answer(introduction['id'], {'continue':True})
+        captured = []
+        def choose(entries, rng):
+            captured.extend(key for key, _ in entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice', side_effect=choose):
+            self.store.next_prompt('flashcards')
+        self.assertNotIn('木', captured)
+
+    def test_existing_bin_over_cap_and_reviews_remain_available(self):
+        self.fill_flashcard_bin(31)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review',level=2 WHERE item_id='bin-0'")
+        captured = []
+        def choose(entries, rng):
+            captured.extend(key for key, _ in entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice', side_effect=choose):
+            self.store.next_prompt('flashcards')
+        self.assertIn('bin-0', captured)
+        self.assertEqual(len(captured), 31)
+        self.assertNotIn('木', captured)
 
     def test_introductions_are_free_recoverable_and_once_per_mode(self):
         for mode in ('flashcards', 'drawing'):
