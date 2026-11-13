@@ -64,7 +64,7 @@ class ContentService:
             # Restrict construction to known, sense-resolved entries.
             catalog = [dict(id=i["id"], text=i["text"], pinyin=i["pinyin"], english=i["english"])
                        for i in self.store._items(db).values() if i["kind"] == "word"]
-        result = self.generate("Validate or translate the requested phrase using only vocabulary in catalog. Return {valid: boolean, reason: string, text: Traditional Chinese sentence ending in 。 or ？ or ！, english: punctuated English translation, tokens: catalog id[], explanation: short grammar explanation}. Require more than three vocabulary tokens. Do not approve an unnatural sentence. Every character except punctuation must come from the selected tokens.",
+        result = self.generate("Validate or translate the requested phrase using only vocabulary in catalog. Return {valid: boolean, reason: string, text: Traditional Chinese sentence ending in 。 or ？ or ！, english: punctuated English translation, tokens: catalog id[], explanation: short grammar explanation}. Require at least two vocabulary tokens. Do not approve an unnatural sentence. Every character except punctuation must come from the selected tokens.",
                                {"request":text, "catalog":catalog})
         if result.get("valid") is not True:
             raise ValueError("Not added: " + str(result.get("reason", "Could not validate this phrase."))[:400])

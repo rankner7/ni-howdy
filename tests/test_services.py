@@ -55,14 +55,14 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.store.state()['pending_count'],0)
         self.assertFalse(any(i['kind']=='phrase' for i in self.store.state()['items']))
 
-    def test_short_custom_phrase_stays_pending_even_when_all_known(self):
+    def test_short_custom_phrase_is_accepted_when_all_known(self):
         service=ContentService(self.store)
         pending=self.store.add({'text':'I want tea.'})
         with self.store.db() as db:
             db.execute("UPDATE progress SET status='review' WHERE mode='flashcards'")
         with patch.object(service,'generate',return_value={'valid':True,'text':'我要茶。','english':'I want tea.','tokens':['我','要','茶']}):
-            with self.assertRaisesRegex(ValueError,'more than three words'):service.validate_pending(pending['id'])
-        self.assertEqual(self.store.state()['pending_count'],1)
+            self.assertTrue(service.validate_pending(pending['id'])['added'])
+        self.assertEqual(self.store.state()['pending_count'],0)
 
     def test_custom_punctuation_variant_does_not_reset_mastery(self):
         service=ContentService(self.store)

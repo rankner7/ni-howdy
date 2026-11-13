@@ -60,7 +60,7 @@ export async function loadExamples(item, root) {
   try {
     const {examples}=await api('word-examples',{id:item.id});
     if(!section.isConnected)return;
-    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}</p>`).join(''):'<p>No examples are available for this word yet.</p>');
+    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}${e.note?`<br><small>${escape(e.note)}</small>`:''}</p><div class="source-links">${sourceLinks(e.sources)}</div>`).join(''):'<p>No examples are available for this word yet.</p>');
   } catch { if(section.isConnected)section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span><p>Examples are currently unavailable.</p>'; }
 }
 

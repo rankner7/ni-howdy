@@ -108,3 +108,18 @@ For browser checks, install development dependencies and use an existing Chrome 
 ```
 
 Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.
+
+## Corpus examples and phrases
+
+Word information prefers real Tatoeba examples, downloaded via ManyThings.org and
+bundled for offline use. Each example shows contributor attribution and a source
+link. Where there are no corpus matches, local grammar examples remain available.
+The phrase page mixes corpus sentences into the local grammar queue when all
+vocabulary can be mapped unambiguously to catalog entries, the sentence contains
+at least two words, and strictly more than 80% are mastered. Linked English
+translations are accepted alternatives. Hard phrase audio remains unavailable.
+
+Chinese has been adapted to Traditional characters and Taiwan vocabulary with
+OpenCC; this does not guarantee Taiwan usage. Pinyin and word boundaries are
+computed locally and may need correction. See [data details](data/README.md) for
+sources, licenses, limitations, and rebuilding the bundled corpus.

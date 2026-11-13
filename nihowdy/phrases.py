@@ -19,7 +19,7 @@ def phrase_key(text):
 
 def eligible(tokens, mastered):
     # Strictly MORE than 80%; use integers so the boundary is exact.
-    return len(tokens) > 3 and 5 * sum(t in mastered for t in tokens) > 4 * len(tokens)
+    return len(tokens) > 1 and 5 * sum(t in mastered for t in tokens) > 4 * len(tokens)
 
 
 # Curated senses keep buying, eating, drinking, reading and wearing distinct.

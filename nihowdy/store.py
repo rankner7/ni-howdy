@@ -25,6 +25,7 @@ from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible a
 from .vocabulary import VocabularyPolicy, reading_key
 from .taiwan import load_taiwan
 from .senses import automatic_sense, misleading_food_sense, with_usage_note
+from . import sentences
 
 
 def encode(value):
@@ -272,6 +273,8 @@ class Store:
         items = self._items(db)
         mastered = self._mastered(db)
         possible = {phrase_key(i['text']): i for i in phrase_candidates(items, mastered) if i}
+        for item in sentences.candidates(items, mastered):
+            possible.setdefault(phrase_key(item['text']), item)
         history = self._phrase_history(db)
         options = {}
         for key, (item, progress, _) in history.items():
@@ -296,7 +299,7 @@ class Store:
                             items[item['id']] = updated
                 options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
         if generate:
-            active = sum(items[item_id].get('phrase_engine') == ENGINE_VERSION and
+            active = sum(items[item_id].get('phrase_engine') in (ENGINE_VERSION, sentences.ENGINE) and
                          history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'
                          for item_id in options)
             groups = {}
@@ -328,7 +331,7 @@ class Store:
         if any(t not in words or words[t]['kind'] != 'word' for t in item['tokens']):
             raise ValueError('The phrase contains unavailable vocabulary. It remains pending.')
         if not phrase_eligible(item['tokens'], self._mastered(db)):
-            raise ValueError('A phrase needs more than three words and strictly more than 80% mastered words. It remains pending.')
+            raise ValueError('A phrase needs at least two words and strictly more than 80% mastered words. It remains pending.')
         existing = self._phrase_history(db).get(phrase_key(item['text']))
         if existing:
             return existing[0], False
@@ -493,7 +496,7 @@ class Store:
             if selected is None and awaiting_taiwan:
                 return {'empty': True, 'mode': mode, 'message': 'Guided practice is waiting for Taiwan stroke templates. Run python3 scripts/prepare_taiwan.py and restart the app. Other vocabulary modes remain available.'}
             if selected is None:
-                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need more than three words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
+                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need at least two words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
             item = self._item(db, selected)
             progress = db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (selected, mode)).fetchone()
             plan = {"drawing": self._drawing_plan(item, progress["level"])} if mode == "drawing" else {}
@@ -792,6 +795,9 @@ class Store:
             if item['kind'] != 'word':
                 return []
             items = self._items(db)
+        sourced = sentences.examples(item)
+        if sourced:
+            return sourced
         words = {key for key, value in items.items() if value['kind'] == 'word'}
         examples = []
         for phrase in islice(phrase_candidates(items, words), 50000):
@@ -912,7 +918,7 @@ class Store:
                 if not text:
                     raise ValueError("Enter a word or phrase to validate.")
                 pending_id = hashlib.sha256(text.encode()).hexdigest()[:20]
-                message = "Saved privately for phrase validation. With the optional provider configured, submit the same phrase again to validate it. Phrases need more than three words and strictly more than 80% mastered vocabulary."
+                message = "Saved privately for phrase validation. With the optional provider configured, submit the same phrase again to validate it. Phrases need at least two words and strictly more than 80% mastered vocabulary."
                 db.execute("INSERT OR IGNORE INTO pending VALUES (?,?,?)", (pending_id, text, message))
                 return {"pending": True, "id": pending_id, "message": message}
             row = db.execute("SELECT * FROM dictionary WHERE id=?", (values.get("id"),)).fetchone()

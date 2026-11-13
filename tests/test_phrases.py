@@ -20,13 +20,17 @@ class PhraseEngineTests(unittest.TestCase):
         return [p for p in candidates(self.items, self.mastered) if p]
 
     def test_strict_coverage_and_word_count(self):
-        self.assertFalse(eligible(['我', '要', '茶'], {'我', '要', '茶'}))
+        self.assertTrue(eligible(['我', '要', '茶'], {'我', '要', '茶'}))
+        self.assertTrue(eligible(['喝', '茶'], {'喝', '茶'}))
+        self.assertFalse(eligible(['咖啡'], {'咖啡'}))
+        self.assertFalse(eligible([], set()))
+        self.assertFalse(eligible(['喝', '茶'], {'茶'}))
         self.assertTrue(eligible(['我', '要', '喝', '茶'], {'我', '要', '喝', '茶'}))
         self.assertFalse(eligible(list('abcdef'), set('abcd')))
         self.assertFalse(eligible(list('abcde'), set('abcd')))
         self.assertTrue(eligible(list('abcdef'), set('abcde')))
         # Multi-character entries count as words, not two Hanzi or syllables.
-        self.assertFalse(eligible(['我', '喜歡', '咖啡'], {'我', '喜歡', '咖啡'}))
+        self.assertTrue(eligible(['我', '喜歡', '咖啡'], {'我', '喜歡', '咖啡'}))
 
     def test_diverse_grammar_and_semantic_object_roles(self):
         self.extra('今天', 'jīn tiān', 'today')
@@ -74,7 +78,7 @@ class PhraseEngineTests(unittest.TestCase):
         self.assertEqual(phrases['我有水，你有茶。']['english'], 'I have water, and you have tea.')
         self.assertEqual(phrases['我有茶，你也有茶。']['english'], 'I have tea, and you have tea too.')
         self.assertIn('我也有電腦。', phrases)
-        self.assertNotIn('我是人。', phrases)  # Still requires more than three words.
+        self.assertNotIn('我是人。', phrases)  # No local template currently emits this form.
         self.assertNotIn('我有蛋，也有電腦。', phrases)  # Related object groups only.
         self.assertFalse(any('有好人' in text or '有學生' in text for text in phrases))
         self.assertTrue(all(eligible(p['tokens'], self.mastered) for p in phrases.values()))

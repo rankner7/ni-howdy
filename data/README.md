@@ -10,3 +10,24 @@ Optional speech: [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS), Apache-
 `character-audio-index.json` preserves the single-character reading/audio-ID pairs from [g0v's MOE concise dictionary audio index](https://github.com/g0v/moedict-data/blob/master/dict-concised.audio.json). Original dictionary content is credited to the Taiwan Ministry of Education. `scripts/setup_recordings.py` uses matching reading identifiers to fetch recordings from the [Ministry's character learning site](https://stroke-order.learningweb.moe.edu.tw/), saving original files unchanged in ignored local storage for personal learning. The repository does not redistribute those audio files. Their source attribution, source page, hash, and playback boundaries are saved in the local manifest. Browser audio playback stops after the initial character pronunciation rather than reading the following narration. Local preparation uses miniaudio (MIT) to detect the quiet boundary.
 
 Local data and indexes are not sent to outside services during practice. Optional content-generation requests contain only the requested entry and its source material.
+
+## Contextual sentences
+
+`sentences.json.gz` contains 27,121 deduplicated Mandarin sentence records from the
+2026-02-13 ManyThings.org Chinese–English Tatoeba export (32,028 input pairs).
+Source: https://www.manythings.org/anki/cmn-eng.zip
+Tatoeba: https://tatoeba.org/ · License: CC BY 2.0 France, as indicated by each
+pair's retained attribution. See `licenses/Tatoeba.txt` for the original notice
+and archive SHA256. Sentence contributor names, IDs and English alternatives are
+retained. The application displays contributor attribution and source links.
+
+Chinese text is adapted using OpenCC `s2twp`; original text is retained. This does
+not certify Taiwan usage. Pinyin is generated with pypinyin, and vocabulary
+boundaries with jieba followed by Traditional conversion. These can have errors,
+particularly ambiguous readings and word senses. Corpus examples are not reviewed
+by this project. Text-only data is bundled; no Tatoeba audio is distributed.
+
+To rebuild, download the archive above and install build-only dependencies:
+`pypinyin==0.55.0`, `jieba==0.42.1`, `opencc-python-reimplemented==0.1.7`, then run
+`.venv/bin/python scripts/build_sentences.py /path/to/cmn-eng.zip`.
+Runtime needs only the standard library. Generated data is about 2.5 MiB compressed.

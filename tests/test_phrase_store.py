@@ -41,6 +41,20 @@ class PhraseStoreTests(unittest.TestCase):
             self.assertTrue(example['english'])
         self.assertEqual(self.store.backup(), before)
 
+    def test_corpus_can_seed_practice_and_preserves_progress_on_reload(self):
+        from tests.test_sentences import RECORD
+        self.master('我', '也', '喜歡', '茶')
+        with patch('nihowdy.store.phrase_candidates', return_value=[]), \
+             patch('nihowdy.sentences.corpus', return_value=[RECORD]):
+            prompt = self.store.next_prompt('phrases')
+            self.assertEqual(prompt['text'], RECORD['text'])
+            self.assertEqual(self.store.next_prompt('phrases')['id'], prompt['id'])
+            result = self.store.answer(prompt['id'], {'text': RECORD['answers'][1]})
+            self.assertTrue(result['correct'])
+            with self.store.db() as db:
+                item = self.store._item(db, 'tatoeba:2')
+                self.assertTrue(item['sources'])
+
     def test_hidden_queue_and_mastered_history_survive_restart_and_backup(self):
         self.master('我', '你', '要', '也', '喝', '水', '茶', '喜歡')
         prompt = self.store.next_prompt('phrases')
@@ -86,7 +100,7 @@ class PhraseStoreTests(unittest.TestCase):
         self.assertNotEqual(next_prompt['id'], prompt['id'])
         self.assertEqual(next_prompt['level'], 0)
 
-    def test_legacy_short_and_nonsensical_templates_are_retained_but_retired(self):
+    def test_legacy_short_phrase_returns_while_nonsensical_phrase_stays_retired(self):
         self.master('我', '也', '要', '喝', '買', '電', '是', '學生')
         with self.store.db() as db:
             short = next(i for i in starter_items() if i['id'] == 'phrase:我是學生。')
@@ -100,7 +114,7 @@ class PhraseStoreTests(unittest.TestCase):
             self.assertIn(short['id'], self.store._items(db))
             self.assertIn(bad['id'], self.store._items(db))
             options = self.store._phrase_options(db)
-            self.assertNotIn(short['id'], options)
+            self.assertIn(short['id'], options)
             self.assertNotIn(bad['id'], options)
 
     def test_existing_legacy_backlog_does_not_block_diverse_generation(self):
@@ -113,7 +127,7 @@ class PhraseStoreTests(unittest.TestCase):
                     db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
                     self.store._enroll(db, item['id'])
             options = self.store._phrase_options(db, generate=True)
-            fresh = [i for i in self.store._items(db).values() if i.get('phrase_engine') == ENGINE_VERSION]
+            fresh = [i for i in self.store._items(db).values() if i.get('phrase_engine') in (ENGINE_VERSION, 'tatoeba-v1')]
             self.assertEqual(len(fresh), 8)
             self.assertGreaterEqual(len(set(options.values())), 3)
             self.assertIn('destinations', options.values())
