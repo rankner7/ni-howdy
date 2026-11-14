@@ -13,6 +13,16 @@ from nihowdy.vocabulary import VocabularyPolicy
 
 
 class TopicTests(unittest.TestCase):
+    def test_essentials_include_basic_sentence_building_words(self):
+        items = {item['text']: item for item in starter_items() if item['kind'] == 'word'}
+        for word in ('嗎', '不', '沒有', '什麼', '哪裡', '誰', '怎麼', '為什麼',
+                     '這', '那', '這個', '那個', '的', '和', '在', '可以',
+                     '我們', '今天', '明天', '請', '對不起', '再見'):
+            with self.subTest(word=word):
+                self.assertIn('essentials', items[word]['collections'])
+                self.assertTrue(items[word]['pinyin'])
+                self.assertTrue(items[word]['answers'])
+
     def test_subject_boundaries(self):
         examples = {
             'people': ['I', 'friend', 'happy', 'to like'],
@@ -131,3 +141,26 @@ class TopicMigrationTests(unittest.TestCase):
         self.assertTrue(enrolled)
         self.assertTrue(all('essentials' in item.get('collections', []) for item in enrolled))
         self.assertTrue(all(item['topic'] != 'essentials' for item in enrolled))
+
+    def test_essentials_upgrade_adds_catalog_and_preserves_existing_card(self):
+        backup = self.store.backup()
+        tables = backup['tables']
+        tables['settings'] = [r for r in tables['settings'] if r['key'] != 'essentials_catalog_version']
+        tables['items'] = [r for r in tables['items'] if r['id'] not in {'不', '嗎'}]
+        saved = dict(next(i for i in self.catalog if i['id'] == '不'), id='dictionary:not',
+                     english='not', answers=['not'], collections=[])
+        tables['items'].append(dict(id=saved['id'], data=json.dumps(saved, ensure_ascii=False)))
+        progress = dict(next(r for r in tables['progress'] if r['mode'] == 'flashcards'),
+                        item_id=saved['id'], attempts=7, level=1)
+        tables['progress'].append(progress)
+        before = copy.deepcopy(tables['progress'])
+        self.store.restore(backup)
+        upgraded = self.store.backup()
+        self.assertEqual(upgraded['tables']['progress'], before)
+        items = {r['id']: json.loads(r['data']) for r in upgraded['tables']['items']}
+        self.assertNotIn('不', items)
+        self.assertIn('essentials', items['dictionary:not']['collections'])
+        self.assertIn('essentials', items['嗎']['collections'])
+        self.assertFalse(any(r['item_id'] == '嗎' for r in upgraded['tables']['progress']))
+        self.store = self.open_store()
+        self.assertEqual(self.store.backup(), upgraded)

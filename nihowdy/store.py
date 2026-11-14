@@ -85,7 +85,30 @@ class Store:
             self._repair_generated_senses(db)
             self._repair_dictionary_conjunction(db)
             self._migrate_topics(db)
+            self._migrate_essentials(db)
             self._activate_waiting(db)
+
+    def _migrate_essentials(self, db):
+        """Add curated collection entries without changing existing progress."""
+        if self._settings(db).get('essentials_catalog_version', 0) >= 1:
+            return
+        existing = self._items(db, include_deleted=True)
+        for starter in starter_items():
+            if starter['kind'] != 'word' or 'essentials' not in starter.get('collections', []):
+                continue
+            matches = [item for item in existing.values()
+                       if item['kind'] == 'word' and item['text'] == starter['text']
+                       and reading_key(item['pinyin']) == reading_key(starter['pinyin'])
+                       and any(word_sense_matches(item, answer) for answer in starter['answers'])]
+            if not matches and starter['id'] not in existing:
+                db.execute('INSERT INTO items VALUES (?,?)', (starter['id'], encode(with_word_answers(starter))))
+                existing[starter['id']] = starter
+            for item in matches:
+                collections = sorted(set(item.get('collections', [])) | {'essentials'})
+                if collections != item.get('collections', []):
+                    item['collections'] = collections
+                    db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), item['id']))
+        db.execute("INSERT OR REPLACE INTO settings VALUES ('essentials_catalog_version',?)", (encode(1),))
 
     def _migrate_topics(self, db):
         """Reclassify saved meanings without replacing IDs or learning history."""
@@ -1027,5 +1050,6 @@ class Store:
             self._repair_generated_senses(db)
             self._repair_dictionary_conjunction(db)
             self._migrate_topics(db)
+            self._migrate_essentials(db)
             self._activate_waiting(db)
         return {"restored": True}

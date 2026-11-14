@@ -70,9 +70,39 @@ ROWS = """
 學校|xué xiào|school;a school|school|學 relates to learning; the compound means school.
 書|shū|book;a book|school|Appears in 書店, bookstore, and 看書, to read.
 看|kàn|to look;look;to watch;watch;to read;read|actions|Contains 手 and 目 (eye). In context it can mean looking, watching, or reading.
+嗎|ma|question particle;question marker|actions|Place 嗎 at the end of a statement to form a yes-or-no question.
+不|bù|not|actions|Place 不 before a verb or adjective to express negation; its tone changes before a fourth tone.
+沒有|méi yǒu|do not have;don't have;not have;there is not;there are not|actions|沒有 negates possession or existence and can also negate a completed action.
+什麼|shén me|what|actions|A question word used in the position of the thing being asked about.
+哪裡|nǎ lǐ|where|travel|A common Taiwan Mandarin word for where.
+誰|shéi|who|people|A question word referring to a person; shéi is a common spoken reading in Taiwan.
+怎麼|zěn me|how|actions|Asks how something happens or how to do something; context can also convey why.
+為什麼|wèi shén me|why|actions|Asks for a reason; often placed before the verb phrase.
+多少|duō shǎo|how much;how many|actions|Asks about an amount or number.
+幾|jǐ|how many;how much|actions|Asks about a number, usually before a classifier.
+這|zhè|this|actions|A demonstrative meaning this; commonly appears before a classifier.
+那|nà|that|actions|A demonstrative meaning that; commonly appears before a classifier.
+這個|zhè ge|this;this one|actions|A common demonstrative meaning this one; 個 is a general classifier.
+那個|nà ge|that;that one|actions|A common demonstrative meaning that one; 個 is a general classifier.
+和|hé|and;with|actions|Joins nouns, as in 茶和水. Taiwan also uses the pronunciation hàn.
+的|de|possessive particle|actions|A particle used for possession and to link many modifiers to nouns.
+在|zài|at;in;to be at|actions|Marks a location or indicates that an action is in progress, depending on context.
+很|hěn|very|actions|Often links a subject to an adjective and does not always mean very in a neutral statement.
+可以|kě yǐ|can;may|actions|Expresses permission or possibility, depending on context.
+想|xiǎng|to want;want;to think;think|actions|Can express wanting to do something or thinking, depending on context.
+她|tā|she;her|people|The feminine third-person pronoun; it sounds like 他.
+我們|wǒ men|we;us|people|The first-person plural pronoun: we or us.
+你們|nǐ men|you (plural);you|people|The plural form of you; 們 marks the plural.
+他們|tā men|they;them|people|A third-person plural pronoun for a group of people.
+今天|jīn tiān|today|time|Refers to the current day; commonly appears after the subject in a sentence.
+明天|míng tiān|tomorrow|time|Refers to the day after today.
+再見|zài jiàn|goodbye;bye|people|A common farewell; literally the characters suggest seeing someone again.
+對不起|duì bu qǐ|sorry;I am sorry|people|A common apology; 不 is often pronounced lightly in this phrase.
+不客氣|bú kè qì|you are welcome;you're welcome;you’re welcome|people|A common response to thanks; 不 changes to bú before the fourth tone in 客.
+請|qǐng|please|people|A polite word used in requests and invitations.
 """.strip()
 
-ESSENTIALS = set('我 你 他 是 有 要 也 喜歡 好 人 一 二 三 大 小 你好 謝謝 喝 水 茶 電腦'.split())
+ESSENTIALS = set('我 你 他 是 有 要 也 喜歡 好 人 一 二 三 大 小 你好 謝謝 喝 水 茶 電腦 嗎 不 沒有 什麼 哪裡 誰 怎麼 為什麼 多少 幾 這 那 這個 那個 和 的 在 很 可以 想 她 我們 你們 他們 今天 明天 再見 對不起 不客氣 請'.split())
 
 hanzi = load_hanzi()
 items = []
@@ -81,10 +111,12 @@ for line in ROWS.splitlines():
     answers = english.split(";")
     items.append(dict(id=form, kind="word", text=form, pinyin=pinyin, english=answers[0],
                       answers=answers, chinese_answers=[form], topic=topic,
-                      collections=["essentials"] if form in ESSENTIALS else [], tokens=[],
+                      tokens=[],
                       region="TW", script="Hant", status="ready", explanation=note,
                       explanation_origin="Cached source-grounded editorial explanation",
                       characters=construction(form, hanzi), sources=sources_for(form)))
+    if form in ESSENTIALS:
+        items[-1]["collections"] = ["essentials"]
 
 def phrase(tokens, english, grammar, topic):
     lookup = {i["id"]: i for i in items}
