@@ -27,7 +27,9 @@ class PhraseEngineTests(unittest.TestCase):
         self.assertFalse(eligible(['喝', '茶'], {'茶'}))
         self.assertTrue(eligible(['我', '要', '喝', '茶'], {'我', '要', '喝', '茶'}))
         self.assertFalse(eligible(list('abcdef'), set('abcd')))
-        self.assertFalse(eligible(list('abcde'), set('abcd')))
+        self.assertTrue(eligible(list('abcde'), set('abcd')))
+        self.assertFalse(eligible(list('abcdefghij'), set('abcdefg')))  # Exactly 70%.
+        self.assertTrue(eligible(list('abcdefghij'), set('abcdefgh')))
         self.assertTrue(eligible(list('abcdef'), set('abcde')))
         # Multi-character entries count as words, not two Hanzi or syllables.
         self.assertTrue(eligible(['我', '喜歡', '咖啡'], {'我', '喜歡', '咖啡'}))
@@ -55,9 +57,9 @@ class PhraseEngineTests(unittest.TestCase):
             self.assertTrue(eligible(p['tokens'], self.mastered))
         self.assertFalse(any('喝電腦' in p or '吃茶' in p or '穿蘋果' in p for p in by_text))
         self.assertLess(sum('also' in p['english'] for p in phrases), len(phrases) / 3)
-        # The six-token question introduces just 嗎: 5/6 > 80%.
+        # The six-token question introduces just 嗎: 5/6 > 70%.
         self.assertEqual(by_text['你今天要喝茶嗎？']['tokens'], ['你', '今天', '要', '喝', '茶', '嗎'])
-        self.assertNotIn('你要喝茶嗎？', by_text)  # 4/5 is exactly 80%.
+        self.assertIn('你要喝茶嗎？', by_text)  # 4/5 exceeds 70%.
 
     def test_wrong_reading_and_unknown_content_are_not_used(self):
         self.master('我', '要', '喝', '茶')

@@ -22,9 +22,13 @@ class RollingTests(unittest.TestCase):
             self.store._enroll(db, '木')
 
     def open_store(self):
+        items=copy.deepcopy(ITEMS)
+        # Isolate rolling-bin behavior from the separately tested core-first policy.
+        for item in items:
+            item['collections']=[]
         with patch('nihowdy.store.load_hanzi', return_value=HANZI), \
              patch('nihowdy.store.load_taiwan', return_value={ch: GUIDE for ch in HANZI}), \
-             patch('nihowdy.store.starter_items', return_value=copy.deepcopy(ITEMS)), \
+             patch('nihowdy.store.starter_items', return_value=items), \
              patch('nihowdy.store.VocabularyPolicy', return_value=VocabularyPolicy({'一木': 100})):
             return Store(self.path, rng=random.Random(8))
 

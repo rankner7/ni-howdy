@@ -66,6 +66,13 @@ def run():
 
                 def configure(word,mode,level):
                     with store.db() as db:
+                        # These scenarios isolate grading; core-first admission
+                        # is covered separately by the core-priority tests.
+                        for row in db.execute('SELECT id,data FROM items').fetchall():
+                            item=json.loads(row['data'])
+                            if 'core' in item.get('collections',[]):
+                                item['collections'].remove('core')
+                                db.execute('UPDATE items SET data=? WHERE id=?',(json.dumps(item,ensure_ascii=False),row['id']))
                         db.execute('DELETE FROM progress')
                         store._enroll(db,word)
                         # Admission is tested through the library flow below;

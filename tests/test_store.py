@@ -32,6 +32,8 @@ class StoreTests(unittest.TestCase):
 
     def only(self, item='電腦', mode='flashcards', level=0):
         with self.store.db() as db:
+            # These progression tests deliberately use a one-word catalog policy.
+            db.execute("UPDATE items SET data=json_set(data,'$.collections',json('[]'))")
             db.execute('DELETE FROM progress WHERE item_id != ? OR mode != ?', (item, mode))
             # These tests isolate progression after a word has already entered a deck.
             # New compound admission is exercised separately below.

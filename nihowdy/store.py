@@ -139,6 +139,56 @@ class Store:
                 self._enroll(db, item_id)
             return added
 
+    def _core_priority_ids(self, db, mode):
+        """Each word skill finishes the core collection before other vocabulary."""
+        if mode not in ('flashcards', 'drawing'):
+            return None
+        groups = {}
+        for item in self._items(db, include_deleted=True).values():
+            if item['kind'] == 'word' and 'core' in item.get('collections', []):
+                groups.setdefault((item['text'], reading_key(item['pinyin'])), set()).add(item['id'])
+        learned = {r[0] for r in db.execute(
+            "SELECT item_id FROM progress WHERE mode=? AND status IN ('mastered','review')", (mode,))}
+        if not groups or all(ids & learned for ids in groups.values()):
+            return None
+        return set().union(*groups.values())
+
+    def prioritize_core_bins(self):
+        """Explicitly enroll the core set and reset displaced active bin entries."""
+        with self.db() as db:
+            core = set(self._core_starter_ids(db))
+            items = self._items(db)
+            displaced = {'flashcards': [], 'drawing': []}
+            priority_modes = {mode for mode in displaced if self._core_priority_ids(db,mode) is not None}
+            for mode in displaced:
+                if mode not in priority_modes:
+                    continue
+                introduced = []
+                for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered'", (mode,)):
+                    item = items[row['item_id']]
+                    seen = db.execute('SELECT 1 FROM prompts WHERE item_id=? AND mode=? LIMIT 1', (item['id'],mode)).fetchone()
+                    if not (row['attempts'] or row['status']=='review' or row['level']>self.lowest(item,mode) or seen):
+                        continue
+                    if mode=='drawing' and row['level']==1 and not all(ch in self.taiwan for ch in item['text']):
+                        continue
+                    introduced.append((item,dict(row)))
+                if mode=='drawing':
+                    introduced.sort(key=lambda pair: (len(pair[0]['text']),
+                        sum(len(self.taiwan.get(ch,self.hanzi[ch])['strokes']) for ch in pair[0]['text']),pair[0]['id']))
+                    introduced = introduced[:DRAWING_BIN_CAP]
+                for item, progress in introduced:
+                    if item['id'] not in core and progress['status']=='active':
+                        db.execute("""UPDATE progress SET level=?,failures=0,boost=0,guided_completions=0
+                                      WHERE item_id=? AND mode=?""",(self.lowest(item,mode),item['id'],mode))
+                        displaced[mode].append(item['id'])
+            for item_id in core:
+                self._restore_item(db,item_id)
+                self._enroll(db,item_id)
+            for row in db.execute("SELECT id,item_id,mode FROM prompts WHERE mode IN ('flashcards','drawing') AND finished=0").fetchall():
+                if row['item_id'] not in core and row['mode'] in priority_modes:
+                    db.execute("UPDATE prompts SET finished=1,payload=json_set(payload,'$.cancelled',1) WHERE id=?",(row['id'],))
+            return displaced
+
     def _migrate_essentials(self, db):
         """Add curated collection entries without changing existing progress."""
         if self._settings(db).get('essentials_catalog_version', 0) >= 1:
@@ -425,7 +475,7 @@ class Store:
         if any(t not in words or words[t]['kind'] != 'word' for t in item['tokens']):
             raise ValueError('The phrase contains unavailable vocabulary. It remains pending.')
         if not phrase_eligible(item['tokens'], self._mastered(db)):
-            raise ValueError('A phrase needs at least two words and strictly more than 80% mastered words. It remains pending.')
+            raise ValueError('A phrase needs at least two words and strictly more than 70% mastered words. It remains pending.')
         existing = self._phrase_history(db).get(phrase_key(item['text']))
         if existing:
             return existing[0], False
@@ -597,12 +647,14 @@ class Store:
             self._reviews(db)
             self._activate_waiting(db)
             session = self._session(db)
+            core_priority = self._core_priority_ids(db, mode)
             phrase_options = self._phrase_options(db, generate=True) if mode == 'phrases' else {}
             listening_options = self._listening_bin(db) if mode == 'listening' else set()
             for item_id in listening_options:
                 db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,'listening',0)", (item_id,))
             outstanding = db.execute("SELECT * FROM prompts WHERE session_id=? AND mode=? AND finished=0 ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
-            if outstanding and ((mode == 'phrases' and outstanding['item_id'] not in phrase_options)
+            if outstanding and ((core_priority is not None and outstanding['item_id'] not in core_priority)
+                                or (mode == 'phrases' and outstanding['item_id'] not in phrase_options)
                                 or (mode == 'listening' and outstanding['item_id'] not in listening_options)):
                 db.execute('UPDATE prompts SET finished=1,payload=? WHERE id=?',
                            (encode({'cancelled': True}), outstanding['id']))
@@ -617,6 +669,8 @@ class Store:
                   AND (p.attempts>0 OR p.level>0 OR p.status='review'
                        OR p.item_id IN (SELECT item_id FROM prompts WHERE mode='flashcards'))
             """)} if mode == 'flashcards' else set()
+            if core_priority is not None:
+                flashcard_bin &= core_priority
             drawing_bin = {r[0] for r in db.execute("""
                 SELECT p.item_id FROM progress p
                 WHERE p.mode='drawing' AND p.status!='mastered'
@@ -628,6 +682,8 @@ class Store:
             awaiting_taiwan = False
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered'", (mode,)):
                 item = self._item(db, row["item_id"])
+                if core_priority is not None and item['id'] not in core_priority:
+                    continue
                 if mode == 'flashcards' and len(flashcard_bin) >= FLASHCARD_BIN_CAP and row['item_id'] not in flashcard_bin:
                     continue
                 if mode == 'drawing' and row['level'] > self.lowest(item, mode):
@@ -676,9 +732,11 @@ class Store:
             if selected is None and awaiting_taiwan:
                 return {'empty': True, 'mode': mode, 'message': 'Guided practice is waiting for Taiwan stroke templates. Run python3 scripts/prepare_taiwan.py and restart the app. Other vocabulary modes remain available.'}
             if selected is None:
+                if core_priority is not None:
+                    return {'empty': True, 'mode': mode, 'message': 'Finish the core 100 in this skill first. Add or restore missing core words from the library to continue.'}
                 if mode == 'listening':
                     return {'empty': True, 'mode': mode, 'message': 'No listening prompts are ready. Master phrases in Phrases & grammar to unlock them here, or return for daily listening reviews.'}
-                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need at least two words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
+                return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need at least two words and strictly more than 70% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
             item = self._item(db, selected)
             progress = db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (selected, mode)).fetchone()
             plan = {"drawing": self._drawing_plan(item, progress["level"])} if mode == "drawing" else {}
@@ -1105,7 +1163,7 @@ class Store:
                 if not text:
                     raise ValueError("Enter a word or phrase to validate.")
                 pending_id = hashlib.sha256(text.encode()).hexdigest()[:20]
-                message = "Saved privately for phrase validation. With the optional provider configured, submit the same phrase again to validate it. Phrases need at least two words and strictly more than 80% mastered vocabulary."
+                message = "Saved privately for phrase validation. With the optional provider configured, submit the same phrase again to validate it. Phrases need at least two words and strictly more than 70% mastered vocabulary."
                 db.execute("INSERT OR IGNORE INTO pending VALUES (?,?,?)", (pending_id, text, message))
                 return {"pending": True, "id": pending_id, "message": message}
             row = db.execute("SELECT * FROM dictionary WHERE id=?", (values.get("id"),)).fetchone()

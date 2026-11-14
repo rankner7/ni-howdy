@@ -45,9 +45,9 @@ class ServiceTests(unittest.TestCase):
         result={'valid':True,'text':'我也要喝茶。','english':'I also want to drink tea.',
                 'tokens':['我','也','要','喝','茶'],'explanation':'Subject + also + want + action.'}
         with self.store.db() as db:
-            db.execute("UPDATE progress SET status='review' WHERE mode='flashcards' AND item_id IN ('我','也','要','喝')")
+            db.execute("UPDATE progress SET status='review' WHERE mode='flashcards' AND item_id IN ('我','要','喝')")
         with patch.object(service,'generate',return_value=result):
-            with self.assertRaisesRegex(ValueError,'more than 80%'):service.validate_pending(pending['id'])
+            with self.assertRaisesRegex(ValueError,'more than 70%'):service.validate_pending(pending['id'])
             self.assertEqual(self.store.state()['pending_count'],1)
             with self.store.db() as db:
                 db.execute("UPDATE progress SET status='review' WHERE item_id='茶' AND mode='drawing'")

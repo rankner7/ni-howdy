@@ -180,9 +180,9 @@ class PhraseStoreTests(unittest.TestCase):
         self.assertFalse(any(i['kind'] == 'phrase' for i in self.store.search(item['text'])))
 
     def test_mastery_is_separate_and_pauses_after_vocabulary_demotion(self):
-        self.master('我', '要', '喝', '茶')
+        self.master('我', '喝', '茶')
         prompt = self.store.next_prompt('phrases')
-        self.assertEqual(prompt['text'], '我要喝茶。')
+        self.assertIn('茶',prompt['text'])
         with self.store.db() as db:
             db.execute("UPDATE progress SET status='active' WHERE item_id='茶'")
         with self.assertRaises(ValueError):

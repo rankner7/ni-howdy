@@ -71,7 +71,8 @@ class SentenceTests(unittest.TestCase):
 
     def test_mastery_and_catalog_boundaries(self):
         with patch.object(sentences, 'corpus', return_value=[RECORD]):
-            self.assertEqual(list(sentences.candidates(self.items, {'我','也','茶'})), [])
+            self.assertEqual(list(sentences.candidates(self.items, {'我','茶'})), [])
+            self.assertEqual(len(list(sentences.candidates(self.items, {'我','也','茶'}))),1)
             phrase, = sentences.candidates(self.items, set(self.items))
             self.assertEqual(phrase['answers'], RECORD['answers'])
             self.assertEqual(phrase['chinese_answers'], [RECORD['text']])
