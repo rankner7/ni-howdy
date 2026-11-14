@@ -29,7 +29,7 @@ export async function practice(mode, state, onUpdate, addExample) {
   }
   function render(){
     const card=$('#practice-card');
-    if(prompt.empty){card.innerHTML=`<div class="empty-state"><h2>No prompts available</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#mastered'}">${mode==='phrases'?'Practise vocabulary':'Visit your mastered bin'} →</a></div>`;return;}
+    if(prompt.empty){card.innerHTML=`<div class="empty-state"><h2>No prompts available</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#library'}">${mode==='phrases'?'Practise vocabulary':'Visit your word library'} →</a></div>`;return;}
     if(prompt.introduction){
       drawing?.dispose?.();drawing=null;
       card.innerHTML=`<div class="notice"><strong>New word</strong></div>${infoContent(prompt.item)}<p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p id="practice-error" class="error" role="alert"></p></form>`;

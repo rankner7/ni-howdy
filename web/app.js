@@ -4,12 +4,13 @@ import {practice} from './practice.js';
 let state, routeVersion=0;
 let topics=[], collections=[];
 const topicLabel=id=>[...topics,...collections].find(t=>t[0]===id)?.[1]||(id==='custom'?'Unclassified':id);
-const labels={home:'My learning',flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases & grammar',library:'Word library',mastered:'Mastered bin',settings:'Settings'};
+const labels={home:'My learning',flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases & grammar',library:'Word library',settings:'Settings'};
 
-async function refresh(){state=await api('state');topics=state.topics;collections=state.collections;$('#mastered-count').textContent=state.stats.mastered;}
+async function refresh(){state=await api('state');topics=state.topics;collections=state.collections;}
 async function route(){
   const revision=++routeVersion;
-  const page=location.hash.slice(1)||'home';
+  const page=location.hash.slice(1)==='mastered'?'library':location.hash.slice(1)||'home';
+  if(location.hash==='#mastered')history.replaceState(null,'','#library');
   $('#main').dataset.route=page;
   $$('.sidebar nav a').forEach(a=>{const active=a.dataset.route===page;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   $('#breadcrumb').textContent=labels[page]||labels.home;
@@ -17,7 +18,7 @@ async function route(){
     await refresh();
     if(revision!==routeVersion)return;
     if(['flashcards','drawing','phrases'].includes(page))return await practice(page,state,refresh,addExample);
-    if(page==='library'||page==='mastered')return library(page);
+    if(page==='library')return library();
     if(page==='settings')return settings();
     home();
   }catch(error){$('#main').innerHTML=`<div class="empty-state"><h1>Let’s reconnect.</h1><p>${escape(error.message)}</p><button class="primary retry-load">Try again</button></div>`;$('.retry-load').onclick=route;}
@@ -56,12 +57,11 @@ function entryActions(item){
   return '';
 }
 
-function library(page){
-  const bin=page==='mastered';
+function library(){
   const selected=new Set();
-  $('#main').innerHTML=pageHeader(bin?'A LITTLE SPACE TO REST':'WORDS THAT MATTER',bin?'You’ve made these yours.':'Your growing word collection.',bin?`Mastered skills rest here. Each unchecked day has a ${state.settings.probability*100}% chance of bringing an item back.`:'Explore meanings, discover connections, and build your own vocabulary.','<button class="primary add-word">＋ Add an example</button>')+
-    `<div class="library-toolbar"><div class="search-wrap"><span>⌕</span><input id="library-search" aria-label="Search your library" placeholder="Find a word, meaning, or pinyin…"></div><label for="status-filter">Status</label><select id="status-filter" aria-label="Filter by status">${bin?'<option value="mastered">Mastered & returning</option>':'<option value="enrolled">In my deck</option><option value="all">Discover all</option><option value="mastered">Mastered & returning</option><option value="unmastered">Not yet mastered</option>'}</select><label for="category-filter">Category</label><select id="category-filter" aria-label="Filter by category or collection"><option value="all">All categories</option>${topics.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}<option value="custom">Unclassified</option><optgroup label="Beginner collection">${collections.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</optgroup></select></div>
-    <div class="library-selection" ${bin?'hidden':''}><label><input type="checkbox" id="select-visible"> Select visible unmastered entries</label><button class="secondary delete-selected" disabled>Delete selected (0)</button></div><div id="library-results"></div>`;
+  $('#main').innerHTML=pageHeader('WORDS THAT MATTER','Your growing word collection.','Explore meanings, discover connections, and build your own vocabulary.','<button class="primary add-word">＋ Add an example</button>')+
+    `<div class="library-toolbar"><div class="search-wrap"><span>⌕</span><input id="library-search" aria-label="Search your library" placeholder="Find a word, meaning, or pinyin…"></div><label for="status-filter">Status</label><select id="status-filter" aria-label="Filter by status"><option value="enrolled">In my deck</option><option value="all">Discover all</option><option value="mastered">Mastered & returning</option><option value="unmastered">Not yet mastered</option></select><label for="category-filter">Category</label><select id="category-filter" aria-label="Filter by category or collection"><option value="all">All categories</option>${topics.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}<option value="custom">Unclassified</option><optgroup label="Beginner collection">${collections.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</optgroup></select></div>
+    <div class="library-selection"><label><input type="checkbox" id="select-visible"> Select visible unmastered entries</label><button class="secondary delete-selected" disabled>Delete selected (0)</button></div><div id="library-results"></div>`;
   $('.add-word').onclick=addExample;
   $('.page-actions').insertAdjacentHTML('afterbegin','<button class="secondary generate-entries">Generate entries ✧</button>');
   $('.generate-entries').onclick=()=>generateEntries();
@@ -69,7 +69,7 @@ function library(page){
     try{
       const result=await api('delete-entries',{ids});
       ids.forEach(id=>selected.delete(id));await refresh();
-      if($('#main').dataset.route===page)render();
+      if($('#main').dataset.route==='library')render();
       toast(result.message,{label:'Undo',run:async()=>{await api('restore-entries',{ids:result.deleted});await route();}});
     }catch(error){toast(error.message);}
   }
