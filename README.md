@@ -3,8 +3,6 @@
 A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional characters with tone-marked Hanyu Pinyin, discover character construction, and build vocabulary around your interests.
 
 ## TODOS
- - chart showing mastery over time with relative learning levels like 1st grade, second grade, etc for vocab
-     - similar chart for phrases
  
 ## Run locally
 
