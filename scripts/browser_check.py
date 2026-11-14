@@ -81,7 +81,7 @@ def run():
                     if page.locator('dialog[open]').count():
                         page.get_by_role('button',name='Got it. Let’s practise').click()
                     if page.locator('.continue-introduction').count():
-                        assert 'New word added' in page.locator('#practice-card').inner_text()
+                        assert 'New word' in page.locator('#practice-card').inner_text()
                         assert page.locator('#answer').count()==0
                         assert page.locator('#drawing-area').count()==0
                         before=store.state()['stats']['attempts']
@@ -101,7 +101,7 @@ def run():
                 if page.locator('dialog[open]').count():page.get_by_role('button',name='Got it. Let’s practise').click()
                 assert page.locator('.prompt-content .pinyin').count()==0
                 page.get_by_role('button',name='Play Mandarin pronunciation').click()
-                page.locator('.audio-status').filter(has_text='locally generated').wait_for(timeout=30000)
+                page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
                 page.screenshot(path=str(ROOT/'artifacts/flashcards-desktop.png'),full_page=True)
                 # Case ignored, punctuation remains significant.
                 page.locator('#answer').fill('computer.')
@@ -120,7 +120,7 @@ def run():
                         };
                     }""")
                     page.get_by_role('button',name='Play Mandarin pronunciation').click()
-                    page.locator('.audio-status').filter(has_text='Ministry of Education recording').wait_for(timeout=10000)
+                    page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
                     scheduled=page.evaluate('window.scheduledAudio')
                     assert len(scheduled)==1 and .3 < scheduled[0]['args'][2] < 1
                     assert scheduled[0]['fullDuration'] > 5  # Never play the following narration.
@@ -265,7 +265,7 @@ def run():
                             page.get_by_role('button',name='Play phrase pronunciation').click()
                         assert response.value.ok
                         assert response.value.headers['content-type'].startswith('audio/wav')
-                        page.locator('.audio-status').filter(has_text='locally generated').wait_for(timeout=30000)
+                        page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
                         # Read a cached response independently of Chromium's media
                         # response body handling, after actual browser playback.
                         clip=page.request.get(response.value.url).body()

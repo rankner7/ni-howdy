@@ -50,14 +50,15 @@ def run():
             page.wait_for_selector('#answer')
             assert page.locator('.pill').first.inner_text() == 'Hard'
             assert page.locator('.audio-button').count() == 0
-            assert 'Ending punctuation is optional' in page.locator('.answer-rule').inner_text()
+            assert page.locator('.answer-rule, .practice-aside, .prompt-content .eyebrow').count() == 0
+            assert page.locator('h1').inner_text() == 'Phrases'
             page.wait_for_timeout(700)  # Beyond the usual 500 ms autoplay delay.
             assert audio_requests == []
             denied = page.request.get(base + '/api/audio?prompt=' + prompt_id)
             assert denied.status == 400
             assert 'Hard phrase' in denied.json()['error']
             page.locator('#answer').fill('我喜歡喝咖啡')
-            page.get_by_role('button', name='Check answer').click()
+            page.locator('#pinyin-input').press('Enter')
             page.wait_for_selector('.feedback.success')
             assert fixture.store.item('phrase:我喜歡喝咖啡。')['text'] == '我喜歡喝咖啡。'
             assert not errors, errors
