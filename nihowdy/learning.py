@@ -133,28 +133,85 @@ def shape_score(drawn, reference, normalize=False, include_feedback=False):
                 drawn = [[[(x-cx)*scale+tx,(y-cy)*scale+ty] for x,y in s] for s in drawn]
     ink = resample(drawn)
     target = resample(reference)
-    radius2 = 58 ** 2
+    radius = 75
+    radius2 = radius ** 2
 
-    def coverage(a, b):
-        return sum(any((x-u)**2 + (y-v)**2 <= radius2 for u, v in b)
+    def coverage(a, b, distance2=radius2):
+        return sum(any((x-u)**2 + (y-v)**2 <= distance2 for u, v in b)
                    for x, y in a) / len(a) if a else 0
 
     recall = coverage(target, ink)
     precision = coverage(ink, target)
     stroke_coverage = [coverage(resample([s]), ink) for s in reference]
     sufficient = len(ink) >= 3 and bool(target)
-    result = {"correct": sufficient and recall >= .84 and precision >= .80 and min(stroke_coverage, default=0) >= .65,
+    # Keep the per-stroke floor in both bands: a strong average must not hide
+    # a substantially missing stroke. Borderline answers advance with feedback.
+    complete = sufficient and min(stroke_coverage, default=0) >= .65
+    confident = complete and recall >= .84 and precision >= .80
+    # A slightly misplaced bend or short hook can push much of an otherwise
+    # recognizable stroke just outside the feedback radius. Allow a wider
+    # band for acceptance, while retaining the tighter per-stroke floor above.
+    # Keep feedback at 75 units so accepted imperfections remain visible.
+    accepted = complete and (confident or (
+        coverage(target, ink, 90 ** 2) >= .76 and
+        coverage(ink, target, 90 ** 2) >= .72))
+    if normalize and not accepted and len(drawn) == len(reference) and len(reference) > 1:
+        # Free handwriting can place otherwise sound strokes a little apart
+        # from the template. Match each stroke once, allowing translation only
+        # (at most 120/1024 of the board), never rotation or individual scaling.
+        # This fallback needs every stroke; the ordinary shape matcher above
+        # still accepts joined or split strokes when their geometry fits.
+        drawn_samples = [resample([s]) for s in drawn]
+        reference_samples = [resample([s]) for s in reference]
+
+        def center(points):
+            return tuple(sum(p[axis] for p in points)/len(points) for axis in (0, 1))
+
+        candidates = []
+        for expected in reference_samples:
+            matches = []
+            if expected:
+                tx, ty = center(expected)
+                for index, samples in enumerate(drawn_samples):
+                    if len(samples) < 3:
+                        continue
+                    cx, cy = center(samples)
+                    dx, dy = tx-cx, ty-cy
+                    distance = math.hypot(dx, dy)
+                    if distance > 120:
+                        dx, dy = dx*120/distance, dy*120/distance
+                    aligned = [(x+dx, y+dy) for x, y in samples]
+                    if coverage(expected, aligned) >= .76 and coverage(aligned, expected) >= .80:
+                        matches.append(index)
+            candidates.append(matches)
+
+        # Bipartite matching preserves order/direction independence without
+        # letting a single drawn stroke stand in for several reference strokes.
+        owners = {}
+
+        def assign(stroke, visited):
+            for candidate in candidates[stroke]:
+                if candidate in visited:
+                    continue
+                visited.add(candidate)
+                if candidate not in owners or assign(owners[candidate], visited):
+                    owners[candidate] = stroke
+                    return True
+            return False
+
+        accepted = all(assign(index, set()) for index in range(len(reference)))
+    result = {"correct": accepted, "borderline": accepted and not confident,
               "coverage": round(recall, 3) if sufficient else 0,
               "precision": round(precision, 3) if sufficient else 0}
-    if include_feedback and not result['correct']:
-        # Use exactly the aligned ink and tolerance used for grading. Group
-        # nearby unmatched samples so the overlay can mark just the extra ink.
+    if include_feedback and (not result['correct'] or result['borderline']):
+        # Use the aligned ink and tighter feedback radius. Group nearby
+        # unmatched samples so the overlay can mark just the misplaced ink.
         incorrect_ink = []
         for stroke in drawn:
             points = resample([stroke])
             run = []
             for point in points:
-                near = any(math.dist(point, expected) <= 58 for expected in target)
+                near = any(math.dist(point, expected) <= radius for expected in target)
                 if not near:
                     run.append(point)
                 elif run:
