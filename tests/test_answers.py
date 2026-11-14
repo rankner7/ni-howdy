@@ -154,7 +154,7 @@ class PhraseGradingStoreTests(unittest.TestCase):
                  ("咖啡", "kā fēi", "coffee"), ("也", "yě", "also"), ("要", "yào", "want"),
                  ("吃", "chī", "eat"), ("蘋果", "píng guǒ", "apple"),
                  ("你", "nǐ", "you"), ("他", "tā", "he"), ("有", "yǒu", "have"),
-                 ("蛋", "dàn", "eggs")]
+                 ("蛋", "dàn", "eggs"), ("火車", "huǒ chē", "train")]
         items = {text: dict(id=text, text=text, pinyin=pinyin, english=english,
                            answers=[english], chinese_answers=[text], kind="word", topic="food")
                  for text, pinyin, english in words}
@@ -190,6 +190,23 @@ class PhraseGradingStoreTests(unittest.TestCase):
         self.assertEqual(self.store.answer(prompt, {"text": "wrong"}), result)
         with self.store.db() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0], 1)
+
+    def test_saved_corpus_train_preference_accepts_likes(self):
+        item=dict(id='phrase:他喜歡火車。',kind='phrase',text='他喜歡火車。',
+                  pinyin='tā xǐ huān huǒ chē',english='He loves trains.',
+                  answers=['He loves trains.'],chinese_answers=['他喜歡火車。'],
+                  tokens=['他','喜歡','火車'],topic='custom',phrase_engine='tatoeba-v1')
+        with self.store.db() as db:
+            db.execute('INSERT INTO items VALUES (?,?)',(item['id'],encode(item)))
+            self.store._enroll(db,item['id'])
+            self.assertEqual(self.store._items(db)[item['id']]['english'],'He likes trains.')
+        result=self.store.answer(self.prompt(item['text']),{'text':'He likes trains'})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['progress']['level'],1)
+        self.assertEqual(result['item']['english'],'He likes trains.')
+        self.assertIn('He loves trains.',result['item']['answers'])
+        for wrong in ('She likes trains','He dislikes trains','He likes cars'):
+            self.assertFalse(correct_english_phrase(wrong,result['item']['answers'],item['text']))
 
     def test_apple_advances_at_medium(self):
         result = self.store.answer(self.prompt("我也要吃蘋果。", level=1), {"text": "I also want to eat an apple"})

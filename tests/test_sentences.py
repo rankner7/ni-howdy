@@ -7,6 +7,18 @@ RECORD = dict(text='我也喜歡茶。', original='我也喜欢茶。', tokens=[
               attribution=['CC-BY 2.0 (France) Attribution: tatoeba.org #1 (A) & #2 (B)'], sentence_id='2')
 
 class SentenceTests(unittest.TestCase):
+    def test_train_preference_uses_reviewed_translation_without_losing_source(self):
+        record=dict(RECORD,text='他喜歡火車。',tokens=['他','喜歡','火車'],
+                    answers=['He loves trains.'])
+        items={t:dict(id=t,kind='word',text=t) for t in record['tokens']}
+        with patch.object(sentences,'corpus',return_value=[record]):
+            phrase,=sentences.candidates(items,set(items))
+            self.assertEqual(phrase['english'],'He likes trains.')
+            self.assertEqual(phrase['answers'],['He likes trains.','He loves trains.'])
+            self.assertTrue(phrase['sources'])
+            self.assertEqual(sentences.examples({'text':'火車'})[0]['english'],'He likes trains.')
+        self.assertEqual(record['answers'],['He loves trains.'])
+
     def setUp(self):
         self.items = {t:dict(id=t,kind='word',text=t) for t in RECORD['tokens']}
 

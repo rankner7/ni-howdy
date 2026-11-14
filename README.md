@@ -129,9 +129,12 @@ OpenCC; this does not guarantee Taiwan usage. Pinyin and word boundaries are
 computed locally and may need correction. See [data details](data/README.md) for
 sources, licenses, limitations, and rebuilding the bundled corpus.
 
-Phrase selection reserves space separately for corpus sentences and local patterns
-(up to four active entries per source when both are available). Existing progress
-is retained. Corpus and templates receive equal total selection weight before
+Automatic phrase additions fill a shared bin of up to 15 active, unmastered phrases.
+Eligible corpus sentences fill available slots first; generated patterns are added
+only when there are not enough new corpus sentences to fill the bin. Existing
+phrases and progress are retained, and new additions wait if an older backlog is
+already at or above 15. Mastery frees a slot; returning reviews do not consume one.
+Corpus and templates receive equal total selection weight before
 recent-history adjustments; local pattern families share the template weight.
 The last eight sentences and the most recent template family receive reduced
 weight, and immediate sentence repeats are avoided when alternatives exist.

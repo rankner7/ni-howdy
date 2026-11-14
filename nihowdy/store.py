@@ -35,6 +35,7 @@ def encode(value):
 
 FLASHCARD_BIN_CAP = 30
 DRAWING_BIN_CAP = 8
+PHRASE_BIN_CAP = 15
 
 
 class Store:
@@ -240,7 +241,7 @@ class Store:
         return self.now().astimezone(ZoneInfo(self._settings(db)["timezone"])).date().isoformat()
 
     def _items(self, db, include_deleted=False):
-        items={r['id']:with_word_answers(with_usage_note(json.loads(r['data']))) for r in db.execute('SELECT * FROM items')}
+        items={r['id']:sentences.with_reviewed_translation(with_word_answers(with_usage_note(json.loads(r['data'])))) for r in db.execute('SELECT * FROM items')}
         return items if include_deleted else {key:item for key,item in items.items() if not item.get('deleted')}
 
     def _item(self, db, item_id, include_deleted=False):
@@ -250,7 +251,7 @@ class Store:
         item=json.loads(row['data'])
         if item.get('deleted') and not include_deleted:
             raise ValueError('This entry was deleted from your library. Restore it through Add example if you want to practise it again.')
-        return with_word_answers(with_usage_note(item))
+        return sentences.with_reviewed_translation(with_word_answers(with_usage_note(item)))
 
     def lowest(self, item, mode):
         return 1 if mode == "drawing" and not any(component_groups(c, self.hanzi) for c in item["text"]) else 0
@@ -336,35 +337,35 @@ class Store:
                             items[item['id']] = updated
                 options[item['id']] = possible[key]['phrase_family'] if key in possible else 'custom'
         if generate:
-            active = {'corpus': 0, 'local': 0}
-            for item_id, family in options.items():
-                if (items[item_id].get('phrase_engine') in (ENGINE_VERSION, sentences.ENGINE)
-                        and history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'):
-                    active['corpus' if family == 'corpus' else 'local'] += 1
+            active = sum(history[phrase_key(items[item_id]['text'])][1]['status'] == 'active'
+                         for item_id in options)
             groups = {}
             for key, item in possible.items():
                 if key not in history:
                     groups.setdefault(item['phrase_family'], []).append(item)
-            # Each source has its own allowance, so an existing local backlog
-            # cannot prevent corpus sentences entering practice.
+            # Fill the shared bin from corpus sentences first. Existing phrases
+            # keep their progress and slots; generated patterns fill any gaps.
+            corpus = groups.pop('corpus', [])
+            self.rng.shuffle(corpus)
             families = list(groups)
             self.rng.shuffle(families)
             for pool in groups.values():
                 self.rng.shuffle(pool)
-            sources = {'corpus' if family == 'corpus' else 'local' for family in groups}
-            sources.update(source for source, count in active.items() if count)
-            limit = 4 if len(sources) == 2 else 8
-            while families:
+            def admit(item, family):
+                db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+                self._enroll(db, item['id'])
+                options[item['id']] = family
+
+            for item in corpus[:max(0, PHRASE_BIN_CAP-active)]:
+                admit(item, 'corpus')
+                active += 1
+            while families and active < PHRASE_BIN_CAP:
                 for family in list(families):
-                    source = 'corpus' if family == 'corpus' else 'local'
-                    if active[source] >= limit:
-                        families.remove(family)
-                        continue
+                    if active >= PHRASE_BIN_CAP:
+                        break
                     item = groups[family].pop()
-                    db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
-                    self._enroll(db, item['id'])
-                    options[item['id']] = family
-                    active[source] += 1
+                    admit(item, family)
+                    active += 1
                     if not groups[family]:
                         families.remove(family)
         return options

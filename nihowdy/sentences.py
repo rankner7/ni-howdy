@@ -8,6 +8,23 @@ from .phrases import eligible
 
 ENGINE = 'tatoeba-v1'
 
+# Reviewed teaching translations supplement the linked corpus translations.
+REVIEWED_TRANSLATIONS = {'他喜歡火車。': 'He likes trains.'}
+
+
+def with_reviewed_translation(item):
+    if item.get('kind') != 'phrase':
+        return item
+    primary = REVIEWED_TRANSLATIONS.get(item['text'])
+    if not primary:
+        return item
+    return dict(item, english=primary, answers=translations(item))
+
+
+def translations(record):
+    primary = REVIEWED_TRANSLATIONS.get(record['text'])
+    return list(dict.fromkeys([primary, *record['answers']])) if primary else record['answers']
+
 
 @lru_cache(maxsize=1)
 def corpus():
@@ -24,7 +41,7 @@ def sources(record):
 def examples(word):
     matches = [r for r in corpus() if word['text'] in r['tokens']]
     matches.sort(key=lambda r: (len(r['tokens']), len(r['text'])))
-    return [dict(text=r['text'], pinyin=r['pinyin'], english=r['answers'][0],
+    return [dict(text=r['text'], pinyin=r['pinyin'], english=translations(r)[0],
                  sources=sources(r), note='Traditional Chinese adapted with OpenCC; pinyin generated locally.')
             for r in matches[:3]]
 
@@ -41,8 +58,9 @@ def candidates(items, mastered):
         tokens = [forms[text][0]['id'] for text in record['tokens']]
         if not eligible(tokens, mastered):
             continue
+        answers = translations(record)
         yield dict(id='tatoeba:'+record['sentence_id'], kind='phrase', text=record['text'],
-                   pinyin=record['pinyin'], english=record['answers'][0], answers=record['answers'],
+                   pinyin=record['pinyin'], english=answers[0], answers=answers,
                    chinese_answers=[record['text']], original_text=record['original'],
                    tokens=tokens, topic='custom', region='TW', script='Hant', status='ready',
                    characters=[], explanation='Corpus example from Tatoeba. Traditional Chinese adapted with OpenCC; pinyin and word boundaries generated locally. Regional usage and readings may vary.',
