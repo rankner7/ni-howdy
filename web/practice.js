@@ -89,7 +89,7 @@ export async function practice(mode, state, onUpdate, addExample) {
     clearTimeout(autoplayTimer);
     if(!isCurrent(button)||button.disabled)return;
     const status=$('.audio-status',practiceCard),error=$('#practice-error',practiceCard);
-    button.disabled=true;status.textContent='Preparing local audio…';
+    button.disabled=true;error.textContent='';status.textContent='Preparing local audio…';
     try{
       if(!audio){
         const r=await fetch('/api/audio?prompt='+encodeURIComponent(prompt.id));
@@ -104,14 +104,24 @@ export async function practice(mode, state, onUpdate, addExample) {
           let playing=null;
           const start=Number(r.headers.get('X-Audio-Start')||0),end=Number(r.headers.get('X-Audio-End'));
           audio={src,pause(){if(playing){try{playing.stop();}catch{}playing=null;}},dispose(){context.close();},
-            async play(){await context.resume();this.pause();playing=context.createBufferSource();playing.buffer=buffer;playing.connect(context.destination);playing.start(0,start,end-start);}};
+            async play(){
+              let timer;
+              try{
+                // Some browsers leave resume() pending when autoplay is blocked.
+                // Release the button so the next click can resume within a user gesture.
+                await Promise.race([context.resume(),new Promise((_,reject)=>{
+                  timer=setTimeout(()=>reject(new DOMException('Playback needs a user gesture.','NotAllowedError')),1000);
+                })]);
+              }finally{clearTimeout(timer);}
+              this.pause();playing=context.createBufferSource();playing.buffer=buffer;playing.connect(context.destination);playing.start(0,start,end-start);
+            }};
         }else audio=new Audio(src);
 
         audio.clipStart=Number(r.headers.get('X-Audio-Start')||0);
       }
       if(!isCurrent(button))return;
-      audio.currentTime=audio.clipStart;await audio.play();status.textContent='';
-    }catch(e){if(isCurrent(button)){error.textContent=e.message;status.textContent=e.name==='NotAllowedError'?'Select the audio button to play pronunciation.':'Audio unavailable. This does not count as a miss.';}}
+      audio.currentTime=audio.clipStart;await audio.play();status.textContent='';error.textContent='';
+    }catch(e){if(isCurrent(button)){error.textContent=e.name==='NotAllowedError'?'':e.message;status.textContent=e.name==='NotAllowedError'?'Select the audio button to play pronunciation.':'Audio unavailable. This does not count as a miss.';}}
     finally{button.disabled=false;}
   }
   async function proofread(text){
