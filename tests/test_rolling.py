@@ -40,6 +40,120 @@ class RollingTests(unittest.TestCase):
                 db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
                 db.execute("INSERT INTO progress(item_id,mode,level,attempts) VALUES (?,'flashcards',0,1)", (item['id'],))
 
+    def fill_drawing_bin(self, count):
+        with self.store.db() as db:
+            original = self.store._item(db, '木')
+            for index in range(count):
+                item = dict(original, id=f'drawing-bin-{index}')
+                db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+                db.execute("INSERT INTO progress(item_id,mode,level,attempts) VALUES (?,'drawing',?,1)",
+                           (item['id'], self.store.lowest(item, 'drawing')))
+
+    def drawing_candidates(self):
+        captured = []
+        def choose(entries, rng):
+            captured.extend(key for key, _ in entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice', side_effect=choose):
+            self.store.next_prompt('drawing')
+        return set(captured)
+
+    def test_full_drawing_bin_blocks_new_words_independently_of_flashcards(self):
+        self.fill_drawing_bin(8)
+        self.assertEqual(self.drawing_candidates(), {f'drawing-bin-{i}' for i in range(8)})
+        self.assertTrue(self.store.next_prompt('flashcards')['introduction'])
+
+    def test_drawing_introduction_reserves_eighth_slot_across_restart_and_backup(self):
+        self.fill_drawing_bin(7)
+        with patch('nihowdy.store.weighted_choice', return_value='木'):
+            prompt = self.store.next_prompt('drawing')
+        self.assertTrue(prompt['introduction'])
+        self.store = self.open_store()
+        self.assertEqual(self.store.next_prompt('drawing')['id'], prompt['id'])
+        self.store.answer(prompt['id'], {'continue':True})
+        with self.store.db() as db:
+            self.store._enroll(db, '一木')
+        self.store.restore(self.store.backup())
+        available = self.drawing_candidates()
+        self.assertNotIn('一木', available)
+        # The just-introduced 木 holds its slot but is skipped as an immediate repeat.
+        self.assertEqual(available, {f'drawing-bin-{i}' for i in range(7)})
+        self.assertEqual(self.progress('drawing')['attempts'], 0)
+
+    def test_drawing_mastery_frees_a_slot(self):
+        self.fill_drawing_bin(8)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET level=4 WHERE item_id='drawing-bin-0'")
+        with patch('nihowdy.store.weighted_choice', return_value='drawing-bin-0'):
+            prompt = self.store.next_prompt('drawing')
+        result = self.store.answer(prompt['id'], {'drawings':[{
+            'strokes':[[[x,900-y] for x,y in stroke] for stroke in HANZI['木']['medians']]}]})
+        self.assertEqual(result['progress']['status'], 'mastered')
+        self.assertIn('木', self.drawing_candidates())
+
+    def test_existing_drawing_backlog_is_limited_to_eight_without_losing_progress(self):
+        self.fill_drawing_bin(9)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='review',level=4 WHERE item_id='drawing-bin-0'")
+        self.assertEqual(self.drawing_candidates(), {f'drawing-bin-{i}' for i in range(8)})
+        with self.store.db() as db:
+            waiting = dict(db.execute("SELECT * FROM progress WHERE item_id='drawing-bin-8' AND mode='drawing'").fetchone())
+            self.assertEqual(waiting['attempts'],1)
+            self.assertEqual(waiting['status'],'active')
+            self.assertEqual(db.execute("SELECT status FROM progress WHERE item_id='drawing-bin-0' AND mode='drawing'").fetchone()[0],'review')
+
+    def test_existing_drawing_backlog_also_prefers_simpler_words(self):
+        self.fill_drawing_bin(9)
+        self.store.taiwan['一'] = dict(strokes=GUIDE['strokes'][:1],medians=GUIDE['medians'][:1])
+        with self.store.db() as db:
+            item = self.store._item(db, 'drawing-bin-8')
+            item['text'] = '一'
+            db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item['id']))
+        available = self.drawing_candidates()
+        self.assertIn('drawing-bin-8',available)
+        self.assertNotIn('drawing-bin-7',available)
+        self.assertEqual(len(available),8)
+
+    def test_deleting_a_drawing_word_frees_a_slot(self):
+        self.fill_drawing_bin(8)
+        self.store.delete_entries(['drawing-bin-0'])
+        available = self.drawing_candidates()
+        self.assertIn('木', available)
+        self.assertNotIn('drawing-bin-0', available)
+        self.assertEqual(len(available), 8)
+
+    def test_drawing_admission_prefers_fewer_strokes_using_taiwan_templates(self):
+        self.fill_drawing_bin(7)
+        with self.store.db() as db:
+            self.store._enroll(db, '一')
+            self.store._enroll(db, '二')
+        for character, count in [('木',4), ('一',1), ('二',2)]:
+            self.store.taiwan[character] = dict(strokes=GUIDE['strokes'][:1]*count,
+                                               medians=GUIDE['medians'][:1]*count)
+        available = self.drawing_candidates()
+        self.assertIn('一', available)
+        self.assertNotIn('二', available)
+        self.assertNotIn('木', available)
+        self.assertEqual(len(available), 8)
+
+    def test_drawing_admission_prefers_fewer_characters_before_strokes(self):
+        self.fill_drawing_bin(7)
+        with self.store.db() as db:
+            self.store._enroll(db, '電腦')
+        for character, count in [('木',8), ('電',1), ('腦',1)]:
+            self.store.taiwan[character] = dict(strokes=GUIDE['strokes'][:1]*count,
+                                               medians=GUIDE['medians'][:1]*count)
+        available = self.drawing_candidates()
+        self.assertIn('木', available)
+        self.assertNotIn('電腦', available)
+
+    def test_drawing_advanced_progress_reserves_slot_even_without_attempt_history(self):
+        self.fill_drawing_bin(7)
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET level=2 WHERE item_id='木' AND mode='drawing'")
+            self.store._enroll(db, '一')
+        self.assertNotIn('一', self.drawing_candidates())
+
     def test_full_flashcard_bin_blocks_new_introductions_but_not_drawing(self):
         self.fill_flashcard_bin(30)
         flashcard = self.store.next_prompt('flashcards')

@@ -34,6 +34,7 @@ def encode(value):
 
 
 FLASHCARD_BIN_CAP = 30
+DRAWING_BIN_CAP = 8
 
 
 class Store:
@@ -548,12 +549,21 @@ class Store:
                   AND (p.attempts>0 OR p.level>0 OR p.status='review'
                        OR p.item_id IN (SELECT item_id FROM prompts WHERE mode='flashcards'))
             """)} if mode == 'flashcards' else set()
+            drawing_bin = {r[0] for r in db.execute("""
+                SELECT p.item_id FROM progress p
+                WHERE p.mode='drawing' AND p.status!='mastered'
+                  AND (p.attempts>0 OR p.status='review'
+                       OR p.item_id IN (SELECT item_id FROM prompts WHERE mode='drawing'))
+            """)} if mode == 'drawing' else set()
+            drawing_priority = {}
             candidates = []
             awaiting_taiwan = False
             for row in db.execute("SELECT * FROM progress WHERE mode=? AND status!='mastered'", (mode,)):
                 item = self._item(db, row["item_id"])
                 if mode == 'flashcards' and len(flashcard_bin) >= FLASHCARD_BIN_CAP and row['item_id'] not in flashcard_bin:
                     continue
+                if mode == 'drawing' and row['level'] > self.lowest(item, mode):
+                    drawing_bin.add(item['id'])
                 if mode == 'drawing' and row['level'] == 1 and not all(ch in self.taiwan for ch in item['text']):
                     awaiting_taiwan = True
                     continue
@@ -562,6 +572,19 @@ class Store:
                 if mode == 'listening' and item['id'] not in listening_options:
                     continue
                 candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode), mode)))
+                if mode == 'drawing':
+                    strokes = sum(len(self.taiwan.get(ch, self.hanzi[ch])['strokes']) for ch in item['text'])
+                    drawing_priority[item['id']] = (len(item['text']), strokes)
+            if mode == 'drawing':
+                # Narrow an older backlog to the simplest eight without losing
+                # progress. Only introduce new words when these slots open up.
+                drawing_bin = set(sorted(drawing_bin & drawing_priority.keys(),
+                                         key=lambda item_id: (*drawing_priority[item_id], item_id))[:DRAWING_BIN_CAP])
+                slots = max(0, DRAWING_BIN_CAP-len(drawing_bin))
+                waiting = [item_id for item_id in drawing_priority if item_id not in drawing_bin]
+                additions = set(sorted(waiting, key=lambda item_id: (*drawing_priority[item_id], item_id))[:slots])
+                candidates = [(item_id, chance) for item_id, chance in candidates
+                              if item_id in drawing_bin or item_id in additions]
             if mode == 'phrases':
                 totals = {}
                 for item_id, chance in candidates:
