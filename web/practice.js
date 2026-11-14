@@ -3,6 +3,7 @@ import {Drawing} from './drawing.js';
 import {drawingFeedback} from './drawing-feedback.js';
 
 const TITLES={flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases'};
+const audioIcon=label=>`<button type="button" class="audio-button" aria-label="${label}" aria-keyshortcuts="Control+P" title="${label} (Ctrl+P)">🔊</button>`;
 
 export async function practice(mode, state, onUpdate, addExample) {
   const main=$('#main');
@@ -11,6 +12,12 @@ export async function practice(mode, state, onUpdate, addExample) {
   let prompt, drawing, busy=false, audio, autoplayTimer;
   const practiceCard=$('#practice-card');
   const isCurrent=card=>main.dataset.route===mode&&practiceCard.isConnected&&card.isConnected;
+  document.onkeydown=event=>{
+    if(event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.shiftKey&&!event.isComposing&&event.key.toLowerCase()==='p'&&!$('#dialog')?.open){
+      const button=$('.audio-button',practiceCard);
+      if(button&&isCurrent(button)){event.preventDefault();play(button);}
+    }
+  };
   async function load(){
     clearTimeout(autoplayTimer);
     const next=await api('prompt',{mode});
@@ -25,7 +32,8 @@ export async function practice(mode, state, onUpdate, addExample) {
     if(prompt.empty){card.innerHTML=`<div class="empty-state"><h2>No prompts available</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#mastered'}">${mode==='phrases'?'Practise vocabulary':'Visit your mastered bin'} →</a></div>`;return;}
     if(prompt.introduction){
       drawing?.dispose?.();drawing=null;
-      card.innerHTML=`<div class="notice"><strong>New word</strong></div>${infoContent(prompt.item)}<button type="button" class="audio-button" aria-label="Play Mandarin pronunciation"><span>▶</span> Listen</button><p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p id="practice-error" class="error" role="alert"></p></form>`;
+      card.innerHTML=`<div class="notice"><strong>New word</strong></div>${infoContent(prompt.item)}<p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p id="practice-error" class="error" role="alert"></p></form>`;
+      $('.entry-heading > span',card).insertAdjacentHTML('afterend',audioIcon('Play Mandarin pronunciation'));
       setupAudio(card);
       loadExamples(prompt.item, card);
       $('#introduction-form',card).onsubmit=async event=>{
@@ -39,13 +47,15 @@ export async function practice(mode, state, onUpdate, addExample) {
       return;
     }
     const isChinese=mode==='phrases'&&prompt.level===2;
+    const playable=(mode==='phrases'||mode==='flashcards')&&prompt.level<2;
+    const audioButton=playable?audioIcon(mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'):'';
     card.innerHTML=`<div class="practice-top"><span class="pill">${prompt.review?'↻ Review · ':''}${escape(prompt.level_name)}</span><span class="attempt-counter">${prompt.failures} / 3 misses</span><button class="icon-button prompt-info" aria-label="Show explanation and count one incorrect attempt">ⓘ</button></div>
       <div class="level-track">${prompt.levels.map((l,i)=>`<span class="${i<=prompt.level?'filled':''}" title="${escape(l)}"></span>`).join('')}</div>
       <div class="prompt-content ${mode}">
-        ${prompt.text?`<div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>`:''}
-        ${prompt.english?`<div class="prompt-english">${escape(prompt.english)}</div>`:''}
+        ${prompt.text?`<div class="prompt-line"><div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>${audioButton}</div>`:''}
+        ${prompt.english?`<div class="prompt-line"><div class="prompt-english">${escape(prompt.english)}</div>${prompt.text?'':audioButton}</div>`:''}
         ${prompt.pinyin?`<p class="pinyin">${escape(prompt.pinyin)}</p>`:''}
-        ${((mode==='phrases'||mode==='flashcards')&&prompt.level<2)?`<button class="audio-button" aria-label="${mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'}"><span>▶</span> Listen${mode==='phrases'?' to the phrase':''}</button><p class="audio-status" role="status"></p>`:''}
+        ${playable?'<p class="audio-status" role="status"></p>':''}
       </div>
       ${prompt.hint?'<div class="notice amber">Information opened · this prompt counts as one miss.</div>':''}
       <form id="answer-form">
@@ -101,7 +111,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       }
       if(!isCurrent(button))return;
       audio.currentTime=audio.clipStart;await audio.play();status.textContent='';
-    }catch(e){if(isCurrent(button)){error.textContent=e.message;status.textContent=e.name==='NotAllowedError'?'Select Listen to play pronunciation.':'Audio unavailable. This does not count as a miss.';}}
+    }catch(e){if(isCurrent(button)){error.textContent=e.message;status.textContent=e.name==='NotAllowedError'?'Select the audio button to play pronunciation.':'Audio unavailable. This does not count as a miss.';}}
     finally{button.disabled=false;}
   }
   async function proofread(text){

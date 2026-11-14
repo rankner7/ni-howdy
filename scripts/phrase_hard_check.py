@@ -50,6 +50,7 @@ def run():
             page.wait_for_selector('#answer')
             assert page.locator('.pill').first.inner_text() == 'Hard'
             assert page.locator('.audio-button').count() == 0
+            assert page.locator('#answer').evaluate("e => e.dispatchEvent(new KeyboardEvent('keydown', {key:'p',ctrlKey:true,bubbles:true,cancelable:true}))")
             assert page.locator('.answer-rule, .practice-aside, .prompt-content .eyebrow').count() == 0
             assert page.locator('h1').inner_text() == 'Phrases'
             page.wait_for_timeout(700)  # Beyond the usual 500 ms autoplay delay.
