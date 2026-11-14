@@ -15,20 +15,29 @@
   <aside class="sidebar">
     <a class="brand" href="#home" aria-label="你howdy home"><img class="brand-mark" src="/favicon.svg" width="42" height="42" alt="你 wearing a cowboy hat"><span><span lang="zh-Hant">你</span>howdy<span class="brand-dot">.</span></span></a>
     <nav aria-label="Main navigation">
-      <a href="#home" data-route="home"><span class="nav-symbol">⌂</span> My learning</a>
-      <p class="nav-label">PRACTISE</p>
-      <a href="#flashcards" data-route="flashcards"><span class="nav-symbol">▣</span> Flashcards</a>
-      <a href="#drawing" data-route="drawing"><span class="nav-symbol">✎</span> Character drawing</a>
-      <a href="#phrases" data-route="phrases"><span class="nav-symbol">☷</span> Phrases & grammar</a>
-      <a href="#listening" data-route="listening"><span class="nav-symbol">♫</span> Listening</a>
-      <p class="nav-label">YOUR SPACE</p>
-      <a href="#library" data-route="library"><span class="nav-symbol">▤</span> Word library</a>
-      <a href="#settings" data-route="settings"><span class="nav-symbol">⚙</span> Settings</a>
+      <a href="#flashcards" data-route="flashcards"><svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="15" height="16" rx="2"/><path d="M2 7v13a3 3 0 0 0 3 3M9 9h7M9 13h5"/></svg><span>Flashcards</span></a>
+      <a href="#drawing" data-route="drawing"><svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14zM4 14l5 5"/></svg><span>Character drawing</span></a>
+      <a href="#phrases" data-route="phrases"><svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h8M9 18h11M3 6h1M3 12h1M3 18h1"/></svg><span>Phrases &amp; grammar</span></a>
+      <a href="#listening" data-route="listening"><svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="12" width="4" height="8" rx="2"/><rect x="17" y="12" width="4" height="8" rx="2"/></svg><span>Listening</span></a>
     </nav>
     <div class="sidebar-bottom"><span class="status-dot"></span> Your local learning space<p>繁體中文 · Taiwan Mandarin</p></div>
   </aside>
   <div class="workspace">
-    <header class="topbar"><span id="breadcrumb">My learning</span><div><span class="locale-pill">繁 <span>Taiwan Mandarin</span></span><span class="avatar" title="Local learner">R</span></div></header>
+    <header class="topbar">
+      <span id="breadcrumb">My learning</span>
+      <div class="topbar-actions">
+        <span class="locale-pill">繁 <span>Taiwan Mandarin</span></span>
+        <a class="home-link" href="#home" data-route="home" aria-label="Home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v11h5v-6h4v6h5V9"/></svg></a>
+        <div class="account-menu">
+          <button class="avatar" id="account-toggle" type="button" aria-label="Profile" aria-expanded="false" aria-controls="account-navigation" title="Profile">R</button>
+          <nav id="account-navigation" aria-label="Account navigation" hidden>
+            <p class="account-caption">Your learning space</p>
+            <a href="#library" data-route="library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M11 9h6M11 13h6"/></svg>Word library</a>
+            <a href="#settings" data-route="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg>Settings</a>
+          </nav>
+        </div>
+      </div>
+    </header>
     <main id="main" tabindex="-1"><div class="loading">Opening your learning space…</div></main>
     <footer>Made for curiosity. Built for a little progress every day.<span>Traditional Chinese · Hanyu Pinyin</span></footer>
   </div>

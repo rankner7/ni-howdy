@@ -7,13 +7,38 @@ let topics=[], collections=[];
 const topicLabel=id=>[...topics,...collections].find(t=>t[0]===id)?.[1]||(id==='custom'?'Unclassified':id);
 const labels={home:'My learning',flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases & grammar',listening:'Listening',library:'Word library',settings:'Settings'};
 
+const accountToggle=$('#account-toggle');
+const accountNavigation=$('#account-navigation');
+function closeAccountMenu(){
+  accountNavigation.hidden=true;
+  accountToggle.setAttribute('aria-expanded','false');
+}
+accountToggle.addEventListener('click',()=>{
+  const open=accountNavigation.hidden;
+  accountNavigation.hidden=!open;
+  accountToggle.setAttribute('aria-expanded',String(open));
+});
+accountNavigation.addEventListener('click',event=>{
+  if(event.target.closest('a')){closeAccountMenu();accountToggle.focus();}
+});
+document.addEventListener('click',event=>{
+  if(!event.target.closest('.account-menu'))closeAccountMenu();
+});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!accountNavigation.hidden){closeAccountMenu();accountToggle.focus();}
+});
+$('.account-menu').addEventListener('focusout',event=>{
+  if(!event.currentTarget.contains(event.relatedTarget))closeAccountMenu();
+});
+
 async function refresh(){state=await api('state');topics=state.topics;collections=state.collections;}
 async function route(){
   const revision=++routeVersion;
   const page=location.hash.slice(1)==='mastered'?'library':location.hash.slice(1)||'home';
   if(location.hash==='#mastered')history.replaceState(null,'','#library');
   $('#main').dataset.route=page;
-  $$('.sidebar nav a').forEach(a=>{const active=a.dataset.route===page;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  closeAccountMenu();
+  $$('a[data-route]').forEach(a=>{const active=a.dataset.route===page;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   $('#breadcrumb').textContent=labels[page]||labels.home;
   try{
     await refresh();
@@ -28,8 +53,8 @@ async function route(){
 function home(){
   const words=state.items.filter(i=>i.kind==='word'&&i.enrolled);
   const greeting=new Intl.DateTimeFormat('en',{weekday:'long',month:'long',day:'numeric',timeZone:state.settings.timezone}).format(new Date());
-  $('#main').innerHTML=`<div class="home-date"><span class="status-dot"></span> ${escape(greeting)} <span>YOUR OWN PACE. YOUR OWN PATH.</span></div>
-    <section class="hero"><div><p class="eyebrow">你好, LET’S LEARN SOMETHING.</p><h1>Small steps.<br><em>Real understanding.</em></h1><p>Learn the Mandarin that matters to you.<br>One word, one character, one connection at a time.</p><a href="#flashcards" class="primary">Continue learning <span>↗</span></a></div><div class="hero-art" aria-hidden="true"><span class="orbit orbit-one"></span><span class="orbit orbit-two"></span><span class="art-note">every word has a story</span><div class="art-tile"><small>hǎo</small><span lang="zh-Hant">好</span><small>good · well</small></div><span class="art-spark">✳</span><span class="art-dot"></span></div></section>
+  $('#main').innerHTML=`<div class="home-date"><span class="status-dot"></span> ${escape(greeting)}</div>
+    <section class="hero"><div><h1>A Gringo's Guide to <em>Talking Taiwanese</em></h1><a href="#flashcards" class="primary">Continue learning <span>↗</span></a></div><div class="hero-art" aria-hidden="true"><span class="orbit orbit-one"></span><span class="orbit orbit-two"></span><div class="art-tile"><small>Táiwān</small><span lang="zh-Hant">台灣</span><small>Taiwan</small></div><span class="art-spark">✳</span><span class="art-dot"></span></div></section>
     <section class="stats" aria-label="Your progress"><article><span class="stat-icon green">▤</span><div><strong>${words.length}</strong><p>Words in your world</p></div></article><article><span class="stat-icon purple">✧</span><div><strong>${state.stats.mastered}</strong><p>Words mastered</p></div></article><article><span class="stat-icon peach">↻</span><div><strong>${state.stats.reviews}</strong><p>Ready to revisit</p></div></article><article><span class="stat-icon yellow">✓</span><div><strong>${state.stats.attempts?Math.round(state.stats.correct/state.stats.attempts*100)+'%':'—'}</strong><p>${state.stats.attempts} attempts · all time</p></div></article></section>
     ${masteryChart(state.mastery_history)}
     <div class="section-heading"><div><p class="eyebrow">FOUR WAYS TO GROW</p><h2>Find your rhythm.</h2></div><span>Different skills. Shared understanding.</span></div>

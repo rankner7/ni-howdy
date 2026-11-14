@@ -54,7 +54,7 @@ def run():
                 page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('request',lambda request:external_requests.append(request.url) if not request.url.startswith((base+'/', 'blob:', 'data:')) else None)
                 page.goto(base,wait_until='networkidle')
-                assert 'Small steps.' in page.locator('h1').inner_text()
+                assert page.locator('h1').inner_text()=="A Gringo's Guide to Talking Taiwanese"
                 page.screenshot(path=str(ROOT/'artifacts/home-desktop.png'),full_page=True)
                 page.get_by_role('button',name='Personalise my topics').click()
                 assert page.locator('input[name=topic]').count()==15
