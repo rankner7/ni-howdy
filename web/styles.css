@@ -103,3 +103,12 @@ dialog.wide{width:min(1080px,calc(100vw - 48px));padding:32px;max-height:90vh}
 .mastery-axis{stroke:var(--line)}
 .mastery-line{fill:none;stroke:#597641;stroke-width:2.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 @media(max-width:650px){.mastery-chart{padding:16px}.mastery-chart h2{font-size:19px}}
+
+/* Listening uses the same practice flow with an audio-only prompt. */
+.listening-card{background:#e7eef2}
+.mini-listening{font-size:42px;margin:18px 0;color:#537687}
+.listening-player{text-align:center}
+.practice-simple .listening-player .audio-button{width:76px;height:76px;font-size:30px;margin-bottom:16px}
+.listening-player p{margin-top:10px}
+@media(min-width:1100px){.practice-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){.mini-listening{position:absolute;right:30px;top:22px}}

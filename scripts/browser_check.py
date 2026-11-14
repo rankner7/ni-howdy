@@ -20,6 +20,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from nihowdy.store import Store
+from nihowdy.answers import correct_pinyin
 
 
 def run():
@@ -101,7 +102,7 @@ def run():
                 if page.locator('dialog[open]').count():page.get_by_role('button',name='Got it. Let’s practise').click()
                 assert page.locator('.prompt-content .pinyin').count()==0
                 page.get_by_role('button',name='Play Mandarin pronunciation').click()
-                page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
+                page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
                 page.screenshot(path=str(ROOT/'artifacts/flashcards-desktop.png'),full_page=True)
                 # Case ignored, punctuation remains significant.
                 page.locator('#answer').fill('computer.')
@@ -120,7 +121,7 @@ def run():
                         };
                     }""")
                     page.get_by_role('button',name='Play Mandarin pronunciation').click()
-                    page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
+                    page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
                     scheduled=page.evaluate('window.scheduledAudio')
                     assert len(scheduled)==1 and .3 < scheduled[0]['args'][2] < 1
                     assert scheduled[0]['fullDuration'] > 5  # Never play the following narration.
@@ -265,7 +266,7 @@ def run():
                             page.get_by_role('button',name='Play phrase pronunciation').click()
                         assert response.value.ok
                         assert response.value.headers['content-type'].startswith('audio/wav')
-                        page.wait_for_function("!document.querySelector('.audio-button').disabled",timeout=30000)
+                        page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
                         # Read a cached response independently of Chromium's media
                         # response body handling, after actual browser playback.
                         clip=page.request.get(response.value.url).body()
@@ -292,6 +293,38 @@ def run():
                 page.screenshot(path=str(ROOT/'artifacts/phrases-desktop.png'),full_page=True)
                 page.get_by_role('button',name='Check answer').click()
                 page.wait_for_selector('.feedback.success')
+
+                # Mastered phrase audio unlocks independent listening levels.
+                navigate('listening')
+                assert page.locator('#answer').get_attribute('aria-label')=='Pinyin'
+                assert page.locator('.prompt-hanzi,.prompt-english,.prompt-content .pinyin').count()==0
+                assert item['text'] not in page.locator('#practice-card').inner_text()
+                page.get_by_role('button',name='Play phrase pronunciation').click()
+                page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
+                page.screenshot(path=str(ROOT/'artifacts/listening-desktop.png'),full_page=True)
+                for roman,character in [('wo','我'),('ye','也'),('yao','要'),('he','喝'),('cha','茶')]:
+                    answer=page.locator('#answer')
+                    answer.fill(answer.input_value()+roman)
+                    page.locator('#candidates button').filter(has=page.locator('span',has_text=re.compile('^'+character+'$'))).first.click()
+                assert correct_pinyin(page.locator('#answer').input_value(),item['pinyin'])
+                assert page.locator('#candidates button').count()==0
+                page.get_by_role('button',name='Check answer').click()
+                page.wait_for_selector('.feedback.success')
+                page.get_by_role('button',name='Next prompt').click()
+                page.wait_for_selector('#answer[aria-label="English translation"]')
+                assert page.locator('.prompt-hanzi,.prompt-english,.prompt-content .pinyin').count()==0
+                page.get_by_role('button',name='Play phrase pronunciation').click()
+                page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.screenshot(path=str(ROOT/'artifacts/listening-mobile.png'),full_page=True)
+                page.locator('#answer').fill(item['english'])
+                page.get_by_role('button',name='Check answer').click()
+                page.wait_for_selector('.feedback.success')
+                page.get_by_role('button',name='Next prompt').click()
+                page.wait_for_selector('.empty-state')
+                assert 'Practise phrases' in page.locator('#main').inner_text()
+                page.set_viewport_size({'width':1440,'height':1050})
 
                 navigate('library')
                 state=page.request.get(base+'/api/state').json()
@@ -394,7 +427,7 @@ def run():
                 assert not errors, errors
                 assert not external_requests, external_requests
                 browser.close()
-                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase audio at Easy/Medium and silent Hard IME, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
+                print('PASS: desktop/mobile, interests, flashcards/audio/grading, hint penalty, components, missing strokes, multi-character progress, free drawing, phrase audio at Easy/Medium and silent Hard IME, audio-only listening at both levels, dictionary additions, category/mastered-word generation, deletion/Undo, and no external browser requests.')
         finally:
             server.terminate()
             server.wait(timeout=10)

@@ -2,14 +2,14 @@ import {$, $$, api, escape, toast, showInfo, infoContent, loadExamples} from './
 import {Drawing} from './drawing.js';
 import {drawingFeedback} from './drawing-feedback.js';
 
-const TITLES={flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases'};
+const TITLES={flashcards:'Flashcards',drawing:'Character drawing',phrases:'Phrases',listening:'Listening'};
 const audioIcon=label=>`<button type="button" class="audio-button" aria-label="${label}" aria-keyshortcuts="Control+P" title="${label} (Ctrl+P)">🔊</button>`;
 
 export async function practice(mode, state, onUpdate, addExample) {
   const main=$('#main');
   main.innerHTML=`<div class="page-heading"><h1>${TITLES[mode]}</h1><div class="page-actions"><button class="secondary add-example">＋ Add example</button></div></div><div class="practice-layout practice-simple"><section id="practice-card" class="practice-card"><div class="loading">Loading…</div></section></div>`;
   $('.add-example').onclick=addExample;
-  let prompt, drawing, busy=false, audio, autoplayTimer;
+  let prompt, drawing, busy=false, audio, autoplayTimer, audioReady=false;
   const practiceCard=$('#practice-card');
   const isCurrent=card=>main.dataset.route===mode&&practiceCard.isConnected&&card.isConnected;
   document.onkeydown=event=>{
@@ -23,13 +23,14 @@ export async function practice(mode, state, onUpdate, addExample) {
     const next=await api('prompt',{mode});
     if(!isCurrent(practiceCard))return;
     if(prompt?.id!==next.id&&audio){audio.pause();audio.dispose?.();URL.revokeObjectURL(audio.src);audio=null;}
+    if(prompt?.id!==next.id)audioReady=false;
     prompt=next;
     render();
 
   }
   function render(){
     const card=$('#practice-card');
-    if(prompt.empty){card.innerHTML=`<div class="empty-state"><h2>No prompts available</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='phrases'?'#flashcards':'#library'}">${mode==='phrases'?'Practise vocabulary':'Visit your word library'} →</a></div>`;return;}
+    if(prompt.empty){card.innerHTML=`<div class="empty-state"><h2>No prompts available</h2><p>${escape(prompt.message)}</p><a class="primary" href="${mode==='listening'?'#phrases':mode==='phrases'?'#flashcards':'#library'}">${mode==='listening'?'Practise phrases':mode==='phrases'?'Practise vocabulary':'Visit your word library'} →</a></div>`;return;}
     if(prompt.introduction){
       drawing?.dispose?.();drawing=null;
       card.innerHTML=`<div class="notice"><strong>New word</strong></div>${infoContent(prompt.item)}<p class="audio-status" role="status"></p><form id="introduction-form"><button class="primary full continue-introduction" type="submit">Continue <span>↵</span></button><p id="practice-error" class="error" role="alert"></p></form>`;
@@ -47,11 +48,13 @@ export async function practice(mode, state, onUpdate, addExample) {
       return;
     }
     const isChinese=mode==='phrases'&&prompt.level===2;
-    const playable=(mode==='phrases'||mode==='flashcards')&&prompt.level<2;
-    const audioButton=playable?audioIcon(mode==='phrases'?'Play phrase pronunciation':'Play Mandarin pronunciation'):'';
+    const isPinyin=mode==='listening'&&prompt.level===0;
+    const playable=mode==='listening'||(mode==='phrases'||mode==='flashcards')&&prompt.level<2;
+    const audioButton=playable?audioIcon(mode==='phrases'||mode==='listening'?'Play phrase pronunciation':'Play Mandarin pronunciation'):'';
     card.innerHTML=`<div class="practice-top"><span class="pill">${prompt.review?'↻ Review · ':''}${escape(prompt.level_name)}</span><span class="attempt-counter">${prompt.failures} / 3 misses</span><button class="icon-button prompt-info" aria-label="Show explanation and count one incorrect attempt">ⓘ</button></div>
       <div class="level-track">${prompt.levels.map((l,i)=>`<span class="${i<=prompt.level?'filled':''}" title="${escape(l)}"></span>`).join('')}</div>
       <div class="prompt-content ${mode}">
+        ${mode==='listening'?`<div class="listening-player">${audioButton}<p>Listen and type ${isPinyin?'the pinyin':'the English translation'}.</p>${isPinyin?'<p class="fine-print">Use tone marks or tone numbers (e.g. nǐ hǎo or ni3 hao3).</p>':''}</div>`:''}
         ${prompt.text?`<div class="prompt-line"><div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>${audioButton}</div>`:''}
         ${prompt.english?`<div class="prompt-line"><div class="prompt-english">${escape(prompt.english)}</div>${prompt.text?'':audioButton}</div>`:''}
         ${prompt.pinyin?`<p class="pinyin">${escape(prompt.pinyin)}</p>`:''}
@@ -60,8 +63,8 @@ export async function practice(mode, state, onUpdate, addExample) {
       ${prompt.hint?'<div class="notice amber">Information opened · this prompt counts as one miss.</div>':''}
       <form id="answer-form">
         ${mode==='drawing'?'<div id="drawing-area"></div>':`
-          <input id="answer" name="answer" aria-label="${isChinese?'Chinese translation':mode==='phrases'?'English translation':'English meaning'}" autocomplete="off" spellcheck="${!isChinese}" placeholder="${isChinese?'Type Chinese translation…':mode==='phrases'?'Type English translation…':'Type English meaning…'}" ${isChinese?'lang="zh-Hant"':''}>
-          ${isChinese?'<div class="ime"><label for="pinyin-input">Pinyin keyboard</label><div class="ime-row"><input id="pinyin-input" aria-label="Pinyin composition" placeholder="Type pinyin, e.g. wo" autocomplete="off" spellcheck="false"><button class="secondary" type="button" id="ime-clear">Clear</button></div><div id="candidates" aria-live="polite"></div><div class="punctuation"><button type="button">。</button><button type="button">，</button><button type="button">？</button><button type="button">！</button></div></div>':'<div id="proofreading" aria-live="polite"></div>'}
+          <input id="answer" name="answer" aria-label="${isPinyin?'Pinyin':isChinese?'Chinese translation':mode==='phrases'||mode==='listening'?'English translation':'English meaning'}" autocomplete="off" spellcheck="${!isChinese&&!isPinyin}" placeholder="${isPinyin?'Type pinyin…':isChinese?'Type Chinese translation…':mode==='phrases'||mode==='listening'?'Type English translation…':'Type English meaning…'}" ${isChinese?'lang="zh-Hant"':''}>
+          ${isChinese?'<div class="ime"><label for="pinyin-input">Pinyin keyboard</label><div class="ime-row"><input id="pinyin-input" aria-label="Pinyin composition" placeholder="Type pinyin, e.g. wo" autocomplete="off" spellcheck="false"><button class="secondary" type="button" id="ime-clear">Clear</button></div><div id="candidates" aria-live="polite"></div><div class="punctuation"><button type="button">。</button><button type="button">，</button><button type="button">？</button><button type="button">！</button></div></div>':isPinyin?'<div class="ime"><p class="fine-print">Type pinyin to see character suggestions. Choose a character to insert its tone-marked pinyin. Use ↓ to browse suggestions.</p><div id="candidates" aria-live="polite"></div></div>':'<div id="proofreading" aria-live="polite"></div>'}
           `}
         <button class="primary check-answer" type="submit">Check answer <span>↵</span></button>
         <p id="practice-error" class="error" role="alert"></p>
@@ -72,8 +75,9 @@ export async function practice(mode, state, onUpdate, addExample) {
     }else{
       const input=$('#answer');input.value=sessionStorage.getItem('nihowdy:answer:'+prompt.id)||'';
       let timer;
-      input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
+      input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese&&!isPinyin){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
       if(isChinese)setupIME();
+      if(isPinyin)setupListeningPinyin();
     }
     setupAudio(card);
     $('#answer-form').onsubmit=submit;
@@ -120,13 +124,50 @@ export async function practice(mode, state, onUpdate, addExample) {
         audio.clipStart=Number(r.headers.get('X-Audio-Start')||0);
       }
       if(!isCurrent(button))return;
-      audio.currentTime=audio.clipStart;await audio.play();status.textContent='';error.textContent='';
+      audio.currentTime=audio.clipStart;await audio.play();audioReady=true;status.textContent='';error.textContent='';
     }catch(e){if(isCurrent(button)){error.textContent=e.name==='NotAllowedError'?'':e.message;status.textContent=e.name==='NotAllowedError'?'Select the audio button to play pronunciation.':'Audio unavailable. This does not count as a miss.';}}
     finally{button.disabled=false;}
   }
   async function proofread(text){
     if(!text.trim()){if($('#proofreading'))$('#proofreading').innerHTML='';return;}
-    try{const data=await api('proofread',{text,phrase:mode==='phrases'});const node=$('#proofreading');if(node&&$('#answer')?.value===text)node.innerHTML=data.messages.map(m=>`<p>✎ ${escape(m)}</p>`).join('');}catch{/* Grading never depends on this helper. */}
+    try{const data=await api('proofread',{text,phrase:mode==='phrases'||mode==='listening'});const node=$('#proofreading');if(node&&$('#answer')?.value===text)node.innerHTML=data.messages.map(m=>`<p>✎ ${escape(m)}</p>`).join('');}catch{/* Grading never depends on this helper. */}
+  }
+  function setupListeningPinyin(){
+    const input=$('#answer'), list=$('#candidates');let timer, revision=0;
+    const clear=()=>{clearTimeout(timer);revision++;list.replaceChildren();};
+    input.addEventListener('input',()=>{
+      clear();
+      const caret=input.selectionStart??input.value.length;
+      const match=input.value.slice(0,caret).match(/[^\s。，？！,.!?;]+$/u);
+      if(!match)return;
+      const query=match[0], start=caret-query.length, value=input.value, request=revision;
+      timer=setTimeout(async()=>{
+        try{
+          const {candidates}=await api('ime?q='+encodeURIComponent(query));
+          if(request!==revision||!list.isConnected||input.value!==value)return;
+          list.innerHTML=candidates.map(c=>`<button type="button" title="${escape(c.pinyin)}"><span>${escape(c.text)}</span><small>${escape(c.pinyin)}</small></button>`).join('');
+          $$('button',list).forEach((button,index)=>button.onclick=()=>{
+            const pinyin=candidates[index].pinyin+' ';
+            input.value=value.slice(0,start)+pinyin+value.slice(caret);
+            input.setSelectionRange(start+pinyin.length,start+pinyin.length);
+            input.dispatchEvent(new Event('input'));input.focus();
+          });
+        }catch{/* Suggestions never affect grading or interrupt typing. */}
+      },180);
+    });
+    input.addEventListener('keydown',event=>{
+      if(event.isComposing)return;
+      if(event.key==='Escape')clear();
+      if(event.key==='ArrowDown'&&$('button',list)){event.preventDefault();$('button',list).focus();}
+    });
+    list.addEventListener('keydown',event=>{
+      const buttons=$$('button',list), index=buttons.indexOf(document.activeElement);
+      if(event.key==='Escape'){clear();input.focus();}
+      if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        event.preventDefault();const next=index+(event.key==='ArrowDown'?1:-1);
+        if(buttons[next])buttons[next].focus();else input.focus();
+      }
+    });
   }
   function setupIME(){
     const input=$('#pinyin-input'), target=$('#answer');let timer;let candidates=[];
@@ -145,6 +186,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       if(mode==='drawing'){const entries=drawing.saveCharacter();if(!entries){updateDrawingButton();return;}payload.drawings=entries;}
       else {payload.text=$('#answer').value;if(!payload.text.trim())throw new Error('Enter an answer before checking.');}
       if(mode==='flashcards'&&prompt.level===1&&!state.services.audio)throw new Error('Install local audio with ./setup.sh before practising this level.');
+      if(mode==='listening'&&!audioReady)throw new Error('Play the phrase audio before checking your answer.');
       busy=true;$('.check-answer').disabled=true;$('.check-answer').textContent='Checking…';
       const result=await api('answer',payload);
       $('#answer-form').hidden=true;

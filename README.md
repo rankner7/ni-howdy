@@ -3,7 +3,6 @@
 A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional characters with tone-marked Hanyu Pinyin, discover character construction, and build vocabulary around your interests.
 
 ## TODOS
- - add a listening page that draws from mastered phrases
  - chart showing mastery over time with relative learning levels like 1st grade, second grade, etc for vocab
      - similar chart for phrases
  
@@ -34,6 +33,7 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 - **My learning chart:** daily mastered-word totals reconstructed from saved practice results, with milestones at 100, 500, 1,000, 2,500, 5,000, and 8,000 words. Each written word counts once across flashcards, drawing, and dictionary senses. Returning reviews count until demotion; phrases are excluded. History uses the configured timezone and survives JSON backup and restore.
 - **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning. The rolling word bin allows up to 30 introduced, unmastered flashcards. New words still enter the library on mastery, but wait for the bin to drop below 30 before introduction. Showing an introduction reserves its slot; acknowledging it does not free the slot. Flashcard mastery or deletion frees a slot. Existing words and returning reviews remain playable even if they bring an older bin above 30; further introductions wait. Drawing and phrase practice have independent progress.
 - **Drawing:** assemble components → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time.
+- **Listening:** audio-only practice drawn from mastered phrases (including pending phrase reviews). Type pinyin at level 1, then only the English translation at level 2. Typing pinyin shows character suggestions, just like phrase composition; choosing a suggestion inserts its tone-marked pinyin. Pinyin accepts tone marks or tone numbers, including 0/5 for neutral tones; tones matter, while spacing and punctuation do not. Listening has independent mastery and daily reviews. Play the audio before checking an answer; playback errors do not count as misses.
 - **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation.
 - One correct answer advances a difficulty. Three consecutive misses at the same difficulty move down. At the lowest difficulty, a three-miss block increases selection weight instead. Each mode tracks its own progress.
 - Passing the hardest level marks that skill as mastered. Each unchecked local calendar day gets one independent 5% review trial. A returning item appears at its hardest level. Reloads never reroll checked dates.
@@ -112,7 +112,7 @@ For browser checks, install development dependencies and use an existing Chrome 
 .venv/bin/python scripts/browser_check.py
 ```
 
-Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, missing strokes, multi-character progress, free drawing, phrase composition, dictionary additions, and absence of external browser requests. It never changes your own progress.
+Set `CHROME_PATH` if Chrome is not at `/usr/bin/google-chrome`. The browser script uses a temporary database, starts and stops its own server, and stores screenshots in ignored `artifacts/`. It checks desktop/mobile layouts, interests, strict flashcard grading, local audio, hint penalties, component assembly, missing strokes, multi-character progress, free drawing, phrase composition, listening playback and both answer levels, dictionary additions, and absence of external browser requests. It never changes your own progress.
 
 ## Corpus examples and phrases
 

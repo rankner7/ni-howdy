@@ -13,7 +13,7 @@ from itertools import islice
 from time import monotonic
 from zoneinfo import ZoneInfo
 
-from .answers import (correct_chinese_phrase, correct_english_phrase,
+from .answers import (correct_chinese_phrase, correct_english_phrase, correct_pinyin,
                       with_word_answers, word_sense_matches)
 from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOSS, TOPIC_KEYWORDS,
                       component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
@@ -385,6 +385,12 @@ class Store:
     def _mastered(self, db):
         return {r[0] for r in db.execute("SELECT item_id FROM progress WHERE mode IN ('flashcards','drawing') AND status IN ('mastered','review')")}
 
+    def _listening_options(self, db):
+        items = self._items(db)
+        return {r[0] for r in db.execute(
+            "SELECT item_id FROM progress WHERE mode='phrases' AND status IN ('mastered','review')")
+            if r[0] in items and items[r[0]]['kind'] == 'phrase'}
+
     def _reviews(self, db):
         today = self._today(db)
         probability = self._settings(db)["probability"]
@@ -433,7 +439,7 @@ class Store:
                     item['waiting']=False
             count = db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
             correct = db.execute("SELECT COUNT(*) FROM attempts WHERE correct=1").fetchone()[0]
-            recent = [dict(r) for r in db.execute("SELECT * FROM attempts WHERE mode!='phrases' ORDER BY id DESC LIMIT 8")]
+            recent = [dict(r) for r in db.execute("SELECT * FROM attempts WHERE mode IN ('flashcards','drawing') ORDER BY id DESC LIMIT 8")]
             pending_count = db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
             unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
                           for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
@@ -523,8 +529,12 @@ class Store:
             self._activate_waiting(db)
             session = self._session(db)
             phrase_options = self._phrase_options(db, generate=True) if mode == 'phrases' else {}
+            listening_options = self._listening_options(db) if mode == 'listening' else set()
+            for item_id in listening_options:
+                db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,'listening',0)", (item_id,))
             outstanding = db.execute("SELECT * FROM prompts WHERE session_id=? AND mode=? AND finished=0 ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()
-            if outstanding and mode == 'phrases' and outstanding['item_id'] not in phrase_options:
+            if outstanding and ((mode == 'phrases' and outstanding['item_id'] not in phrase_options)
+                                or (mode == 'listening' and outstanding['item_id'] not in listening_options)):
                 db.execute('UPDATE prompts SET finished=1,payload=? WHERE id=?',
                            (encode({'cancelled': True}), outstanding['id']))
                 outstanding = None
@@ -548,6 +558,8 @@ class Store:
                     awaiting_taiwan = True
                     continue
                 if mode == "phrases" and item['id'] not in phrase_options:
+                    continue
+                if mode == 'listening' and item['id'] not in listening_options:
                     continue
                 candidates.append((row["item_id"], weight(dict(row), self.lowest(item, mode), mode)))
             if mode == 'phrases':
@@ -573,6 +585,8 @@ class Store:
             if selected is None and awaiting_taiwan:
                 return {'empty': True, 'mode': mode, 'message': 'Guided practice is waiting for Taiwan stroke templates. Run python3 scripts/prepare_taiwan.py and restart the app. Other vocabulary modes remain available.'}
             if selected is None:
+                if mode == 'listening':
+                    return {'empty': True, 'mode': mode, 'message': 'No listening prompts are ready. Master phrases in Phrases & grammar to unlock them here, or return for daily listening reviews.'}
                 return {"empty": True, "mode": mode, "message": "No new phrases or reviews are ready. Keep mastering vocabulary in flashcards or drawing: phrases need at least two words and strictly more than 80% known vocabulary." if mode == "phrases" else "Your deck is complete for now. Add more words or come back for daily reviews."}
             item = self._item(db, selected)
             progress = db.execute("SELECT * FROM progress WHERE item_id=? AND mode=?", (selected, mode)).fetchone()
@@ -629,6 +643,8 @@ class Store:
         self._item(db,row['item_id'])
         if row['mode'] == 'phrases' and not row['finished'] and row['item_id'] not in self._phrase_options(db):
             raise ValueError('This phrase needs more mastered vocabulary. Load the next prompt to continue.')
+        if row['mode'] == 'listening' and not row['finished'] and row['item_id'] not in self._listening_options(db):
+            raise ValueError('This phrase is no longer mastered. Load the next prompt to continue.')
         return row
 
     def _expand(self, db, item, session):
@@ -844,9 +860,11 @@ class Store:
                 if not isinstance(text, str) or len(text) > 2000:
                     raise ValueError("Enter a short text answer.")
                 accepted = item["chinese_answers"] if prompt["mode"] == "phrases" and prompt["level"] == 2 else list(item["answers"])
-                if prompt["mode"] == "phrases" and prompt["level"] == 2:
+                if prompt['mode'] == 'listening' and prompt['level'] == 0:
+                    correct = correct_pinyin(text, item['pinyin'])
+                elif prompt["mode"] == "phrases" and prompt["level"] == 2:
                     correct = correct_chinese_phrase(text, accepted)
-                elif prompt["mode"] == "phrases" and prompt["level"] < 2:
+                elif prompt["mode"] in ('phrases', 'listening'):
                     correct = correct_english_phrase(text, accepted, item["text"])
                 else:
                     correct = correct_answer(text, accepted)

@@ -7,6 +7,7 @@ LEVELS = {
     "flashcards": ["Easy", "Medium", "Hard"],
     "drawing": ["Components", "Guided", "Easy", "Medium", "Hard"],
     "phrases": ["Easy", "Medium", "Hard"],
+    "listening": ["Pinyin", "English"],
 }
 
 

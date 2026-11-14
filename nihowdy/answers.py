@@ -6,7 +6,18 @@ Rules must preserve content words, negation, tense, and subject agreement.
 import re
 import unicodedata
 
+from .content import tone_pinyin
 from .glosses import parse_gloss
+
+
+def correct_pinyin(text, expected):
+    """Keep tones significant; accept numbered tones and flexible word spacing."""
+    def key(value):
+        value = unicodedata.normalize('NFC', value).casefold()
+        value = tone_pinyin(value.replace('u:', 'ü').replace('v', 'ü').replace('0', '5'))
+        return ''.join(c for c in value if not c.isspace()
+                       and not unicodedata.category(c).startswith('P'))
+    return bool(key(text)) and key(text) == key(expected)
 
 
 def with_word_answers(item):
