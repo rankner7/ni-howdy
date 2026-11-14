@@ -14,3 +14,82 @@ dialog{border:1px solid var(--line);border-radius:18px;background:var(--paper);c
 .context-examples{margin:20px 0}.context-examples>p{padding:10px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.7;color:#718166}.context-examples strong{font-size:16px;color:var(--ink)}
 .practice-layout.practice-simple{display:block;width:100%;max-width:none}main:is([data-route="flashcards"],[data-route="drawing"],[data-route="phrases"]){max-width:none}.practice-simple .audio-status:empty{display:none}
 .prompt-line{display:flex;justify-content:center;align-items:center;gap:10px}.prompt-line .prompt-hanzi{min-width:0;overflow-wrap:anywhere}.audio-button{flex:0 0 auto;width:36px;height:36px;display:inline-grid;place-items:center;padding:0;margin:0;border-radius:50%;font-size:16px;line-height:1}.entry-heading .audio-button{align-self:center}
+
+/* Readable information and practice layouts. */
+.word-information{font-size:17px;line-height:1.7}
+.word-information .entry-heading{gap:20px;margin:20px 0 28px;flex-wrap:wrap}
+.word-information .entry-heading>span{font-size:56px;line-height:1.2;max-width:100%}
+.word-information .entry-heading>div{min-width:0;flex:1 1 220px}
+.word-information .entry-heading p{font-size:19px;color:#647359}
+.word-information .entry-heading h3{font-size:23px;margin-top:6px;overflow-wrap:anywhere}
+.info-columns,.word-details{min-width:0}
+.word-information .explanation{font-size:17px;line-height:1.8;max-width:70ch;margin-bottom:12px}
+.word-information .fine-print{font-size:14px;color:#65705f;margin:12px 0}
+.word-information .character-notes{margin:24px 0}
+.word-information .character-notes article{gap:20px;padding:20px 0}
+.word-information .note-glyph{font-size:42px;line-height:1.3;min-width:50px}
+.word-information .character-notes article>div{min-width:0}
+.word-information .character-notes strong{font-size:16px;line-height:1.6}
+.word-information .character-notes p{font-size:16px;line-height:1.7;color:#596b52;margin:8px 0}
+.word-information .character-notes small{font-size:14px;color:#65705f}
+.word-information .accepted{padding:18px 20px;font-size:17px}
+.word-information .accepted .eyebrow{font-size:12px;letter-spacing:1px;color:#596b52}
+.word-information .accepted p{margin-top:6px}
+.word-information .context-examples{margin:0;min-width:0}
+.word-information .context-examples h3{font-size:20px;margin:0 0 16px}
+.context-example{padding:18px 0;border-top:1px solid var(--line)}
+.context-example p{overflow-wrap:anywhere}
+.context-example .example-sentence{font-size:24px;line-height:1.55;color:var(--ink)}
+.context-example .example-pinyin{font-size:16px;color:#647359;margin:8px 0 4px}
+.context-example .example-translation{font-size:17px;line-height:1.65}
+.word-information .source-links a{font-size:14px;overflow-wrap:anywhere;line-height:1.7}
+dialog.wide{width:min(1080px,calc(100vw - 48px));padding:32px;max-height:90vh}
+.practice-simple .practice-card{padding:32px}
+.practice-simple .notice{font-size:15px}
+.practice-simple .audio-status,.practice-simple .error{font-size:14px;line-height:1.6}
+.practice-simple .pill,.practice-simple .attempt-counter{font-size:14px}
+.practice-simple .prompt-content{padding:32px 0}
+.practice-simple .prompt-english{font-size:32px;line-height:1.5;max-width:38ch}
+.practice-simple .phrases .prompt-hanzi{font-size:42px;line-height:1.5}
+.practice-simple .pinyin{font-size:20px}
+.practice-simple #answer-form{max-width:960px;margin:0 auto}
+.practice-simple #answer{font-size:20px;min-height:58px;padding:14px 18px}
+.practice-simple #answer[lang]{font-size:24px}
+.practice-simple .ime{padding:20px;margin-top:18px}
+.practice-simple #answer-form label{font-size:15px;margin-bottom:10px}
+.practice-simple #pinyin-input{font-size:18px;min-width:0}
+.practice-simple .ime-row button{font-size:15px;padding:10px 16px}
+.practice-simple .punctuation{margin-top:16px;gap:8px}
+.practice-simple .punctuation button{min-width:40px;min-height:40px;font-size:22px}
+.practice-simple .check-answer,.practice-simple .continue-introduction{width:auto;min-width:210px;min-height:48px;font-size:16px;margin:24px 0 0 auto;display:flex;gap:28px}
+.practice-simple .feedback{margin-top:24px;font-size:16px}
+.practice-simple .feedback h3{font-size:22px}
+.practice-simple .feedback p,.practice-simple .text-button{font-size:16px}
+.practice-simple .audio-button{width:40px;height:40px;font-size:18px}
+@media(min-width:1100px){
+  .info-columns:has(>.context-examples){display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:start}
+  .info-columns>.context-examples{border-left:1px solid var(--line);padding-left:32px}
+  .sidebar nav a{font-size:14px;padding:12px 14px}
+  .sidebar .nav-label{font-size:11px;letter-spacing:1px}
+  .topbar{font-size:14px}
+  main:is([data-route="flashcards"],[data-route="drawing"],[data-route="phrases"]){padding-top:30px}
+}
+@media(max-width:1099px){
+  .word-information .context-examples{margin-top:28px}
+}
+@media(max-width:650px){
+  dialog.wide{padding:20px;width:calc(100vw - 24px)}
+  .practice-simple .practice-card{padding:20px}
+  .word-information{font-size:16px}
+  .word-information .entry-heading{gap:12px;margin:16px 0 24px}
+  .word-information .entry-heading>span{font-size:44px}
+  .word-information .entry-heading h3{font-size:20px}
+  .word-information .entry-heading p{font-size:17px}
+  .word-information .explanation{font-size:16px}
+  .context-example .example-sentence{font-size:22px}
+  .practice-simple .prompt-english{font-size:24px}
+  .practice-simple .phrases .prompt-hanzi{font-size:30px}
+  .practice-simple .prompt-content{padding:24px 0}
+  .practice-simple .ime{padding:14px}
+  .practice-simple .check-answer,.practice-simple .continue-introduction{width:100%;min-width:0}
+}

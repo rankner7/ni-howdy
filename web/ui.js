@@ -42,16 +42,20 @@ export function sourceLinks(sources=[]) {
 
 export function infoContent(item, options={}) {
   return `
+    <section class="word-information">
     ${options.penalty ? '<div class="notice amber">One incorrect attempt recorded. You can still finish this prompt for practice.</div>' : ''}
     <div class="entry-heading"><span lang="zh-Hant">${escape(item.text)}</span><div><p>${escape(item.pinyin)}</p><h3>${escape(item.english)}</h3></div></div>
+    <div class="info-columns"><div class="word-details">
     ${item.usage_note?`<p class="explanation">${escape(item.usage_note)}</p>`:''}
     <p class="explanation">${escape(item.explanation)}</p>
     <p class="fine-print">${escape(item.explanation_origin)}</p>
     <div class="character-notes">${(item.characters||[]).map(c => `<article><span class="note-glyph" lang="zh-Hant">${escape(c.character)}</span><div><strong>${escape(c.definition)}</strong><p>${escape(c.note)}</p><small>Construction: ${escape(c.decomposition || 'Not available')}</small></div></article>`).join('')}</div>
     <div class="accepted"><span class="eyebrow">ACCEPTED ENGLISH</span><p>${item.answers.map(escape).join(' · ')}</p></div>
-    ${item.kind==='word'?'<section class="context-examples"><span class="eyebrow">EXAMPLE PHRASES</span><p>Finding examples…</p></section>':''}
+    </div>
+    ${item.kind==='word'? '<section class="context-examples"><h3>Example phrases</h3><p>Finding examples…</p></section>':''}
+    </div>
     ${item.kind!=='word'?`<div class="source-links">${sourceLinks(item.sources)}</div>`:''}
-    ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}`;
+    ${options.generate ? '<button class="secondary generate-explanation">Generate & cache a sourced explanation</button>' : ''}</section>`;
 }
 
 export async function loadExamples(item, root) {
@@ -65,8 +69,8 @@ export async function loadExamples(item, root) {
       for(const example of examples) credits[example.text]=example.sources;
       localStorage.setItem('example-credits', JSON.stringify(credits));
     } catch {}
-    section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span>'+(examples.length?examples.map(e=>`<p><strong lang="zh-Hant">${escape(e.text)}</strong><br>${escape(e.pinyin)}<br>${escape(e.english)}</p>`).join(''):'<p>No examples are available for this word yet.</p>');
-  } catch { if(section.isConnected)section.innerHTML='<span class="eyebrow">EXAMPLE PHRASES</span><p>Examples are currently unavailable.</p>'; }
+    section.innerHTML='<h3>Example phrases</h3>'+(examples.length?examples.map(e=>`<article class="context-example"><p class="example-sentence" lang="zh-Hant">${escape(e.text)}</p><p class="example-pinyin">${escape(e.pinyin)}</p><p class="example-translation">${escape(e.english)}</p></article>`).join(''):'<p>No examples are available for this word yet.</p>');
+  } catch { if(section.isConnected)section.innerHTML='<h3>Example phrases</h3><p>Examples are currently unavailable.</p>'; }
 }
 
 export function showInfo(item, options={}) {
