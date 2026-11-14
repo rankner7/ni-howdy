@@ -120,6 +120,27 @@ class StoreTests(unittest.TestCase):
         self.store.restore(original)
         self.assertEqual(self.store.state()['settings']['probability'], .05)
 
+    def test_mastery_history_survives_backup_and_demotes_after_review(self):
+        self.only(level=2)
+        self.store.update_settings({'probability': 1})
+        prompt = self.next_prompt('flashcards')
+        self.store.answer(prompt['id'], {'text': 'computer'})
+        before = self.store.state()['mastery_history']
+        self.assertEqual(before[-1], {'date': '2026-11-09', 'mastered': 1})
+        backup = self.store.backup()
+        self.store.restore(backup)
+        self.assertEqual(self.store.state()['mastery_history'], before)
+        self.day = datetime(2026, 11, 10, 17, tzinfo=timezone.utc)
+        with self.store.db() as db:
+            db.execute("DELETE FROM progress WHERE item_id!='電腦'")
+        self.assertEqual(self.store.state()['stats']['mastered'], 1)
+        for _ in range(3):
+            prompt = self.next_prompt('flashcards')
+            self.store.answer(prompt['id'], {'text': 'incorrect'})
+        state = self.store.state()
+        self.assertEqual(state['mastery_history'][-1], {'date': '2026-11-10', 'mastered': 0})
+        self.assertEqual(state['stats']['mastered'], 0)
+
     def test_enrolling_a_noun_does_not_pregenerate_phrases(self):
         with self.store.db() as db:
             before = db.execute("SELECT COUNT(*) FROM items WHERE json_extract(data,'$.kind')='phrase'").fetchone()[0]

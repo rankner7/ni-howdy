@@ -31,6 +31,7 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 
 ## Learning rules
 
+- **My learning chart:** daily mastered-word totals reconstructed from saved practice results, with milestones at 100, 500, 1,000, 2,500, 5,000, and 8,000 words. Each written word counts once across flashcards, drawing, and dictionary senses. Returning reviews count until demotion; phrases are excluded. History uses the configured timezone and survives JSON backup and restore.
 - **Flashcards:** characters + pinyin → characters + audio → audio only. Type the English meaning. The rolling word bin allows up to 30 introduced, unmastered flashcards. New words still enter the library on mastery, but wait for the bin to drop below 30 before introduction. Showing an introduction reserves its slot; acknowledging it does not free the slot. Flashcard mastery or deletion frees a slot. Existing words and returning reviews remain playable even if they bring an older bin above 30; further introductions wait. Drawing and phrase practice have independent progress.
 - **Drawing:** assemble components → add missing strokes with English/pinyin → add missing strokes with English → draw the whole entry from English. Complete multi-character words one character at a time.
 - **Phrases:** characters + pinyin → characters only → English to Chinese using the built-in pinyin QWERTY composer or your system IME. Submit characters, including punctuation.

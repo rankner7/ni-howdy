@@ -93,3 +93,13 @@ dialog.wide{width:min(1080px,calc(100vw - 48px));padding:32px;max-height:90vh}
   .practice-simple .ime{padding:14px}
   .practice-simple .check-answer,.practice-simple .continue-introduction{width:100%;min-width:0}
 }
+
+.mastery-chart{margin:30px 0;border:1px solid var(--line);border-radius:12px;padding:24px;background:var(--paper)}
+.mastery-chart h2{font-size:21px;margin-bottom:14px}
+.mastery-chart-scroll{overflow-x:auto}
+.mastery-chart svg{display:block;width:100%;min-width:760px;height:auto;overflow:visible}
+.mastery-milestone line{stroke:var(--line);stroke-dasharray:4 5}
+.mastery-milestone text,.mastery-tick{font-size:13px;fill:#65705f}
+.mastery-axis{stroke:var(--line)}
+.mastery-line{fill:none;stroke:#597641;stroke-width:2.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+@media(max-width:650px){.mastery-chart{padding:16px}.mastery-chart h2{font-size:19px}}

@@ -26,6 +26,7 @@ from .vocabulary import VocabularyPolicy, reading_key
 from .taiwan import load_taiwan
 from .senses import automatic_sense, misleading_food_sense, with_usage_note
 from . import sentences
+from .history import mastery_history
 
 
 def encode(value):
@@ -436,10 +437,24 @@ class Store:
             pending_count = db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
             unfinished = [dict(item_id=r["item_id"], remaining=2-len(json.loads(r["added"])))
                           for r in db.execute("SELECT * FROM expansions") if len(json.loads(r["added"])) < 2]
+            history_attempts = [dict(r, progress=json.loads(r['progress']) if r['progress'] else None)
+                                for r in db.execute("""
+                                    SELECT a.id,a.item_id,a.mode,a.created_at,
+                                           json_extract(p.result,'$.progress') AS progress
+                                    FROM attempts a JOIN prompts p ON p.id=a.prompt_id
+                                    WHERE a.mode IN ('flashcards','drawing')
+                                """)]
+            forms = {key: item['text'] for key, item in self._items(db, include_deleted=True).items()
+                     if item['kind'] == 'word'}
+            zone = ZoneInfo(self._settings(db)['timezone'])
+            started = db.execute('SELECT created_at FROM sessions ORDER BY id LIMIT 1').fetchone()[0]
+            history = mastery_history(history_attempts, progress, forms, self._today(db), zone,
+                                      datetime.fromisoformat(started).astimezone(zone).date().isoformat())
             return {"settings": self._settings(db), "items": list(items.values()), "session": session,
                     "topics": TOPICS, "collections": COLLECTIONS,
                     'corpus_forms':len(self.vocabulary.counts),
-                    "stats": {"attempts": count, "correct": correct, "mastered": len(mastered),
+                    "mastery_history": history,
+                    "stats": {"attempts": count, "correct": correct, "mastered": history[-1]['mastered'],
                               "reviews": sum(p["status"] == "review" for p in progress),
                               "active": sum(p["status"] == "active" for p in progress)},
                     "recent": recent, "pending_count": pending_count, "pending_expansions": unfinished}
