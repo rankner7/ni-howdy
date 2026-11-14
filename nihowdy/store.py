@@ -36,6 +36,7 @@ def encode(value):
 FLASHCARD_BIN_CAP = 30
 DRAWING_BIN_CAP = 8
 PHRASE_BIN_CAP = 15
+LISTENING_BIN_CAP = 30
 
 
 class Store:
@@ -393,6 +394,24 @@ class Store:
             "SELECT item_id FROM progress WHERE mode='phrases' AND status IN ('mastered','review')")
             if r[0] in items and items[r[0]]['kind'] == 'phrase'}
 
+    def _listening_bin(self, db):
+        eligible = self._listening_options(db)
+        progress = {r['item_id']: dict(r) for r in db.execute("SELECT * FROM progress WHERE mode='listening'")}
+        outstanding = {r[0] for r in db.execute("""
+            SELECT p.item_id FROM prompts p JOIN sessions s ON s.id=p.session_id
+            WHERE p.mode='listening' AND p.finished=0 AND s.active=1
+        """)}
+        def priority(item_id):
+            p = progress.get(item_id)
+            rank = (0 if item_id in outstanding else
+                    1 if p and p['status'] == 'review' else
+                    2 if p and (p['attempts'] > 0 or p['level'] > 0) else
+                    3 if p else 4)
+            return rank, item_id
+        waiting = [item_id for item_id in eligible
+                   if item_id not in progress or progress[item_id]['status'] != 'mastered']
+        return set(sorted(waiting, key=priority)[:LISTENING_BIN_CAP])
+
     def _reviews(self, db):
         today = self._today(db)
         probability = self._settings(db)["probability"]
@@ -531,7 +550,7 @@ class Store:
             self._activate_waiting(db)
             session = self._session(db)
             phrase_options = self._phrase_options(db, generate=True) if mode == 'phrases' else {}
-            listening_options = self._listening_options(db) if mode == 'listening' else set()
+            listening_options = self._listening_bin(db) if mode == 'listening' else set()
             for item_id in listening_options:
                 db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,'listening',0)", (item_id,))
             outstanding = db.execute("SELECT * FROM prompts WHERE session_id=? AND mode=? AND finished=0 ORDER BY rowid DESC LIMIT 1", (session, mode)).fetchone()

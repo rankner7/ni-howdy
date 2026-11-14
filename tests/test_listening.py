@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from nihowdy.answers import correct_pinyin
-from nihowdy.store import Store
+from nihowdy.store import Store, encode
+from tests.test_guided import isolated_store
 
 
 class PinyinAnswerTests(unittest.TestCase):
@@ -19,6 +20,105 @@ class PinyinAnswerTests(unittest.TestCase):
         for answer in ['nü3 er2 ma0', 'nv3 er2 ma5', 'nu:3 er2 ma']:
             self.assertTrue(correct_pinyin(answer, 'nǚ ér ma'))
         self.assertFalse(correct_pinyin('nu3 er2 ma', 'nǚ ér ma'))
+
+
+class ListeningBinTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.path = Path(directory.name)/'listening.sqlite'
+        self.store = isolated_store(self.path)
+        self.ids = [f'listening-test-{i:03}' for i in range(40)]
+        with self.store.db() as db:
+            db.execute('DELETE FROM progress')
+            for index, item_id in enumerate(self.ids):
+                item = dict(id=item_id,kind='phrase',text=f'聽力例句{index}。',
+                            pinyin='wǒ hē chá',english='I drink tea.',answers=['I drink tea.'],
+                            chinese_answers=[f'聽力例句{index}。'],tokens=['我','喝','茶'],topic='custom')
+                db.execute('INSERT INTO items VALUES (?,?)',(item_id,encode(item)))
+                db.execute("INSERT INTO progress(item_id,mode,level,status,checked_on) VALUES (?,'phrases',2,'mastered','2099-01-01')",(item_id,))
+
+    def bin(self):
+        with self.store.db() as db:
+            return self.store._listening_bin(db)
+
+    def test_only_thirty_phrases_are_admitted_and_selection_stays_in_bin(self):
+        self.store.next_prompt('listening')
+        expected=set(self.ids[:30])
+        self.assertEqual(self.bin(),expected)
+        with self.store.db() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM progress WHERE mode='listening'").fetchone()[0],30)
+            db.execute('UPDATE prompts SET finished=1')
+        captured=[]
+        def choose(entries,rng):
+            captured.extend(key for key,_ in entries)
+            return entries[0][0]
+        with patch('nihowdy.store.weighted_choice',side_effect=choose):
+            self.store.next_prompt('listening')
+        self.assertTrue(set(captured)<=expected)
+        self.assertFalse(set(captured)&set(self.ids[30:]))
+
+    def test_mastery_frees_one_slot_for_a_waiting_phrase(self):
+        self.store.next_prompt('listening')
+        with self.store.db() as db:
+            db.execute('UPDATE prompts SET finished=1')
+            db.execute("UPDATE progress SET level=1,attempts=1 WHERE item_id=? AND mode='listening'",(self.ids[0],))
+        with patch('nihowdy.store.weighted_choice',return_value=self.ids[0]):
+            prompt=self.store.next_prompt('listening')
+        result=self.store.answer(prompt['id'],{'text':'I drink tea'})
+        self.assertEqual(result['progress']['status'],'mastered')
+        self.store.next_prompt('listening')
+        self.assertEqual(self.bin(),set(self.ids[1:31]))
+
+    def test_backlog_above_thirty_preserves_progress_and_prioritizes_reviews(self):
+        with self.store.db() as db:
+            for item_id in self.ids:
+                db.execute("INSERT INTO progress(item_id,mode,level,attempts) VALUES (?,'listening',1,2)",(item_id,))
+            db.execute("UPDATE progress SET status='review' WHERE item_id=? AND mode='listening'",(self.ids[-1],))
+        self.assertEqual(self.bin(),set(self.ids[:29]+[self.ids[-1]]))
+        self.store.next_prompt('listening')
+        with self.store.db() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM progress WHERE mode='listening'").fetchone()[0],40)
+            self.assertEqual(db.execute("SELECT attempts FROM progress WHERE item_id=? AND mode='listening'",(self.ids[-2],)).fetchone()[0],2)
+
+    def test_current_prompt_keeps_its_slot_when_review_backlog_returns(self):
+        with patch('nihowdy.store.weighted_choice',return_value=self.ids[29]):
+            prompt=self.store.next_prompt('listening')
+        with self.store.db() as db:
+            for item_id in self.ids:
+                db.execute("INSERT OR IGNORE INTO progress(item_id,mode,level) VALUES (?,'listening',1)",(item_id,))
+            db.execute("UPDATE progress SET status='review' WHERE mode='listening'")
+        self.assertEqual(len(self.bin()),30)
+        self.assertIn(self.ids[29],self.bin())
+        self.assertEqual(self.store.next_prompt('listening')['id'],prompt['id'])
+
+    def test_bin_is_stable_across_restart_backup_and_new_eligible_phrases(self):
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='active' WHERE item_id=? AND mode='phrases'",(self.ids[0],))
+        prompt=self.store.next_prompt('listening')
+        expected=set(self.ids[1:31])
+        self.assertEqual(self.bin(),expected)
+        self.store=isolated_store(self.path)
+        self.store.restore(self.store.backup())
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='mastered' WHERE item_id=? AND mode='phrases'",(self.ids[0],))
+        self.assertEqual(self.bin(),expected)
+        self.assertEqual(self.store.next_prompt('listening')['id'],prompt['id'])
+
+    def test_source_demotion_releases_a_slot_without_erasing_listening_progress(self):
+        self.store.next_prompt('listening')
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='active' WHERE item_id=? AND mode='phrases'",(self.ids[0],))
+        self.store.next_prompt('listening')
+        self.assertEqual(self.bin(),set(self.ids[1:31]))
+        with self.store.db() as db:
+            self.assertIsNotNone(db.execute("SELECT 1 FROM progress WHERE item_id=? AND mode='listening'",(self.ids[0],)).fetchone())
+
+    def test_small_eligible_pool_is_not_padded(self):
+        with self.store.db() as db:
+            db.execute("UPDATE progress SET status='active' WHERE mode='phrases' AND item_id NOT IN (?,?)",self.ids[:2])
+        self.store.next_prompt('listening')
+        self.assertEqual(self.bin(),set(self.ids[:2]))
 
 
 class ListeningTests(unittest.TestCase):
