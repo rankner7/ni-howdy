@@ -861,7 +861,8 @@ class Store:
                     raise ValueError("Enter a short text answer.")
                 accepted = item["chinese_answers"] if prompt["mode"] == "phrases" and prompt["level"] == 2 else list(item["answers"])
                 if prompt['mode'] == 'listening' and prompt['level'] == 0:
-                    correct = correct_pinyin(text, item['pinyin'])
+                    correct = (correct_chinese_phrase(text, item['chinese_answers'])
+                               or correct_pinyin(text, item['pinyin']))
                 elif prompt["mode"] == "phrases" and prompt["level"] == 2:
                     correct = correct_chinese_phrase(text, accepted)
                 elif prompt["mode"] in ('phrases', 'listening'):

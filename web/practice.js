@@ -54,7 +54,7 @@ export async function practice(mode, state, onUpdate, addExample) {
     card.innerHTML=`<div class="practice-top"><span class="pill">${prompt.review?'↻ Review · ':''}${escape(prompt.level_name)}</span><span class="attempt-counter">${prompt.failures} / 3 misses</span><button class="icon-button prompt-info" aria-label="Show explanation and count one incorrect attempt">ⓘ</button></div>
       <div class="level-track">${prompt.levels.map((l,i)=>`<span class="${i<=prompt.level?'filled':''}" title="${escape(l)}"></span>`).join('')}</div>
       <div class="prompt-content ${mode}">
-        ${mode==='listening'?`<div class="listening-player">${audioButton}<p>Listen and type ${isPinyin?'the pinyin':'the English translation'}.</p>${isPinyin?'<p class="fine-print">Use tone marks or tone numbers (e.g. nǐ hǎo or ni3 hao3).</p>':''}</div>`:''}
+        ${mode==='listening'?`<div class="listening-player">${audioButton}<p>Listen and type ${isPinyin?'the Mandarin phrase':'the English translation'}.</p>${isPinyin?'<p class="fine-print">Use the pinyin keyboard below. Enter selects a suggestion; Enter in an empty keyboard checks your answer.</p>':''}</div>`:''}
         ${prompt.text?`<div class="prompt-line"><div class="prompt-hanzi" lang="zh-Hant">${escape(prompt.text)}</div>${audioButton}</div>`:''}
         ${prompt.english?`<div class="prompt-line"><div class="prompt-english">${escape(prompt.english)}</div>${prompt.text?'':audioButton}</div>`:''}
         ${prompt.pinyin?`<p class="pinyin">${escape(prompt.pinyin)}</p>`:''}
@@ -63,8 +63,8 @@ export async function practice(mode, state, onUpdate, addExample) {
       ${prompt.hint?'<div class="notice amber">Information opened · this prompt counts as one miss.</div>':''}
       <form id="answer-form">
         ${mode==='drawing'?'<div id="drawing-area"></div>':`
-          <input id="answer" name="answer" aria-label="${isPinyin?'Pinyin':isChinese?'Chinese translation':mode==='phrases'||mode==='listening'?'English translation':'English meaning'}" autocomplete="off" spellcheck="${!isChinese&&!isPinyin}" placeholder="${isPinyin?'Type pinyin…':isChinese?'Type Chinese translation…':mode==='phrases'||mode==='listening'?'Type English translation…':'Type English meaning…'}" ${isChinese?'lang="zh-Hant"':''}>
-          ${isChinese?'<div class="ime"><label for="pinyin-input">Pinyin keyboard</label><div class="ime-row"><input id="pinyin-input" aria-label="Pinyin composition" placeholder="Type pinyin, e.g. wo" autocomplete="off" spellcheck="false"><button class="secondary" type="button" id="ime-clear">Clear</button></div><div id="candidates" aria-live="polite"></div><div class="punctuation"><button type="button">。</button><button type="button">，</button><button type="button">？</button><button type="button">！</button></div></div>':isPinyin?'<div class="ime"><p class="fine-print">Type pinyin to see character suggestions. Choose a character to insert its tone-marked pinyin. Use ↓ to browse suggestions.</p><div id="candidates" aria-live="polite"></div></div>':'<div id="proofreading" aria-live="polite"></div>'}
+          <input id="answer" name="answer" aria-label="${isPinyin?'Chinese transcription':isChinese?'Chinese translation':mode==='phrases'||mode==='listening'?'English translation':'English meaning'}" autocomplete="off" spellcheck="${!isChinese&&!isPinyin}" placeholder="${isPinyin?'Compose Chinese with the pinyin keyboard…':isChinese?'Type Chinese translation…':mode==='phrases'||mode==='listening'?'Type English translation…':'Type English meaning…'}" ${isChinese||isPinyin?'lang="zh-Hant"':''}>
+          ${isChinese||isPinyin?'<div class="ime"><label for="pinyin-input">Pinyin keyboard</label><div class="ime-row"><input id="pinyin-input" aria-label="Pinyin composition" placeholder="Type pinyin, e.g. wo" autocomplete="off" spellcheck="false"><button class="secondary" type="button" id="ime-clear">Clear</button></div><div id="candidates" aria-live="polite"></div><div class="punctuation"><button type="button">。</button><button type="button">，</button><button type="button">？</button><button type="button">！</button></div></div>':'<div id="proofreading" aria-live="polite"></div>'}
           `}
         <button class="primary check-answer" type="submit">Check answer <span>↵</span></button>
         <p id="practice-error" class="error" role="alert"></p>
@@ -76,8 +76,7 @@ export async function practice(mode, state, onUpdate, addExample) {
       const input=$('#answer');input.value=sessionStorage.getItem('nihowdy:answer:'+prompt.id)||'';
       let timer;
       input.oninput=()=>{sessionStorage.setItem('nihowdy:answer:'+prompt.id,input.value);if(!isChinese&&!isPinyin){clearTimeout(timer);timer=setTimeout(()=>proofread(input.value),600);}};
-      if(isChinese)setupIME();
-      if(isPinyin)setupListeningPinyin();
+      if(isChinese||isPinyin)setupIME();
     }
     setupAudio(card);
     $('#answer-form').onsubmit=submit;
@@ -132,50 +131,46 @@ export async function practice(mode, state, onUpdate, addExample) {
     if(!text.trim()){if($('#proofreading'))$('#proofreading').innerHTML='';return;}
     try{const data=await api('proofread',{text,phrase:mode==='phrases'||mode==='listening'});const node=$('#proofreading');if(node&&$('#answer')?.value===text)node.innerHTML=data.messages.map(m=>`<p>✎ ${escape(m)}</p>`).join('');}catch{/* Grading never depends on this helper. */}
   }
-  function setupListeningPinyin(){
-    const input=$('#answer'), list=$('#candidates');let timer, revision=0;
-    const clear=()=>{clearTimeout(timer);revision++;list.replaceChildren();};
-    input.addEventListener('input',()=>{
-      clear();
-      const caret=input.selectionStart??input.value.length;
-      const match=input.value.slice(0,caret).match(/[^\s。，？！,.!?;]+$/u);
-      if(!match)return;
-      const query=match[0], start=caret-query.length, value=input.value, request=revision;
-      timer=setTimeout(async()=>{
-        try{
-          const {candidates}=await api('ime?q='+encodeURIComponent(query));
-          if(request!==revision||!list.isConnected||input.value!==value)return;
-          list.innerHTML=candidates.map(c=>`<button type="button" title="${escape(c.pinyin)}"><span>${escape(c.text)}</span><small>${escape(c.pinyin)}</small></button>`).join('');
-          $$('button',list).forEach((button,index)=>button.onclick=()=>{
-            const pinyin=candidates[index].pinyin+' ';
-            input.value=value.slice(0,start)+pinyin+value.slice(caret);
-            input.setSelectionRange(start+pinyin.length,start+pinyin.length);
-            input.dispatchEvent(new Event('input'));input.focus();
-          });
-        }catch{/* Suggestions never affect grading or interrupt typing. */}
-      },180);
-    });
-    input.addEventListener('keydown',event=>{
-      if(event.isComposing)return;
-      if(event.key==='Escape')clear();
-      if(event.key==='ArrowDown'&&$('button',list)){event.preventDefault();$('button',list).focus();}
-    });
-    list.addEventListener('keydown',event=>{
-      const buttons=$$('button',list), index=buttons.indexOf(document.activeElement);
-      if(event.key==='Escape'){clear();input.focus();}
-      if(event.key==='ArrowDown'||event.key==='ArrowUp'){
-        event.preventDefault();const next=index+(event.key==='ArrowDown'?1:-1);
-        if(buttons[next])buttons[next].focus();else input.focus();
-      }
-    });
-  }
   function setupIME(){
-    const input=$('#pinyin-input'), target=$('#answer');let timer;let candidates=[];
-    const choose=value=>{const start=target.selectionStart??target.value.length,end=target.selectionEnd??start;target.value=target.value.slice(0,start)+value+target.value.slice(end);target.setSelectionRange(start+value.length,start+value.length);target.dispatchEvent(new Event('input'));input.value='';$('#candidates').innerHTML='';input.focus();};
-    input.oninput=()=>{clearTimeout(timer);const query=input.value;timer=setTimeout(async()=>{try{const result=await api('ime?q='+encodeURIComponent(query));if(input.value!==query)return;candidates=result.candidates;$('#candidates').innerHTML=candidates.map((c,i)=>`<button type="button" data-index="${i}" title="${escape(c.pinyin)}"><span>${escape(c.text)}</span><small>${i<9?i+1:''}</small></button>`).join('')||'<p class="fine-print">No candidates. Try one syllable or a complete word.</p>';$$('#candidates button').forEach(b=>b.onclick=()=>choose(candidates[+b.dataset.index].text));}catch(e){toast(e.message);}},180);};
-    input.onkeydown=e=>{if(e.isComposing)return;if(e.key==='Enter'&&!input.value.trim()){e.preventDefault();$('#answer-form').requestSubmit();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(candidates[0])choose(candidates[0].text);}else if(/^[1-9]$/.test(e.key)&&candidates[+e.key-1]){e.preventDefault();choose(candidates[+e.key-1].text);}};
-    $('#ime-clear').onclick=()=>{input.value='';candidates=[];$('#candidates').innerHTML='';input.focus();};
-    $$('.punctuation button').forEach(b=>b.onclick=()=>choose(b.textContent));
+    const input=$('#pinyin-input'), target=$('#answer'), list=$('#candidates');
+    let timer, revision=0, candidates=[];
+    const clear=()=>{clearTimeout(timer);revision++;candidates=[];list.replaceChildren();};
+    const choose=candidate=>{
+      const value=candidate.text;
+      const start=target.selectionStart??target.value.length,end=target.selectionEnd??start;
+      target.value=target.value.slice(0,start)+value+target.value.slice(end);
+      target.setSelectionRange(start+value.length,start+value.length);
+      target.dispatchEvent(new Event('input'));input.value='';clear();input.focus();
+    };
+    async function suggest(){
+      clearTimeout(timer);
+      const query=input.value, request=++revision;
+      candidates=[];list.replaceChildren();
+      if(!query.trim())return;
+      try{
+        const result=await api('ime?q='+encodeURIComponent(query));
+        if(request!==revision||input.value!==query||!list.isConnected)return;
+        candidates=result.candidates;
+        list.innerHTML=candidates.map((c,i)=>`<button type="button" data-index="${i}" title="${escape(c.pinyin)}"><span>${escape(c.text)}</span><small>${i<9?i+1:''}</small></button>`).join('')||'<p class="fine-print">No candidates. Try one syllable or a complete word.</p>';
+        $$('button',list).forEach((button,index)=>button.onclick=()=>choose(candidates[index]));
+        return true;
+      }catch(error){toast(error.message);}
+    }
+    input.oninput=()=>{clear();timer=setTimeout(suggest,180);};
+    input.onkeydown=async event=>{
+      if(event.isComposing)return;
+      if(event.key==='Enter'&&!input.value.trim()){
+        event.preventDefault();$('#answer-form').requestSubmit();
+      }else if(event.key==='Enter'||event.key===' '){
+        event.preventDefault();
+        if(!candidates.length&&!await suggest())return;
+        if(candidates[0])choose(candidates[0]);
+      }else if(/^[1-9]$/.test(event.key)&&candidates[+event.key-1]){
+        event.preventDefault();choose(candidates[+event.key-1]);
+      }
+    };
+    $('#ime-clear').onclick=()=>{input.value='';clear();input.focus();};
+    $$('.punctuation button').forEach(button=>button.onclick=()=>choose({text:button.textContent}));
   }
   function updateDrawingButton(){ $('.check-answer').innerHTML=drawing.isLast()?'Check entry <span>↵</span>':'Save character & continue <span>→</span>'; }
   async function submit(event){

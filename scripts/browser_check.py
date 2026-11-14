@@ -20,7 +20,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from nihowdy.store import Store
-from nihowdy.answers import correct_pinyin
+from nihowdy.answers import correct_chinese_phrase
 
 
 def run():
@@ -296,19 +296,18 @@ def run():
 
                 # Mastered phrase audio unlocks independent listening levels.
                 navigate('listening')
-                assert page.locator('#answer').get_attribute('aria-label')=='Pinyin'
+                assert page.locator('#answer').get_attribute('aria-label')=='Chinese transcription'
                 assert page.locator('.prompt-hanzi,.prompt-english,.prompt-content .pinyin').count()==0
                 assert item['text'] not in page.locator('#practice-card').inner_text()
                 page.get_by_role('button',name='Play phrase pronunciation').click()
                 page.wait_for_function("() => !document.querySelector('.audio-button').disabled",timeout=30000)
                 page.screenshot(path=str(ROOT/'artifacts/listening-desktop.png'),full_page=True)
                 for roman,character in [('wo','我'),('ye','也'),('yao','要'),('he','喝'),('cha','茶')]:
-                    answer=page.locator('#answer')
-                    answer.fill(answer.input_value()+roman)
+                    page.locator('#pinyin-input').fill(roman)
                     page.locator('#candidates button').filter(has=page.locator('span',has_text=re.compile('^'+character+'$'))).first.click()
-                assert correct_pinyin(page.locator('#answer').input_value(),item['pinyin'])
+                assert correct_chinese_phrase(page.locator('#answer').input_value(),item['chinese_answers'])
                 assert page.locator('#candidates button').count()==0
-                page.get_by_role('button',name='Check answer').click()
+                page.locator('#pinyin-input').press('Enter')
                 page.wait_for_selector('.feedback.success')
                 page.get_by_role('button',name='Next prompt').click()
                 page.wait_for_selector('#answer[aria-label="English translation"]')

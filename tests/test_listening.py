@@ -60,6 +60,15 @@ class ListeningTests(unittest.TestCase):
         self.assertEqual(source['attempts'], 0)
         self.assertNotIn(self.phrase['id'], json.dumps(self.store.state()))
 
+    def test_composed_characters_are_graded_as_chinese(self):
+        prompt = self.store.next_prompt('listening')
+        result = self.store.answer(prompt['id'], {'text': '你喝茶'})
+        self.assertFalse(result['correct'])
+        prompt = self.store.next_prompt('listening')
+        result = self.store.answer(prompt['id'], {'text': '我喝茶'})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['progress']['level'], 1)
+
     def test_unmastered_source_cancels_outstanding_prompt(self):
         prompt = self.store.next_prompt('listening')
         with self.store.db() as db:
