@@ -25,8 +25,9 @@ def mastery_history(attempts, progress, forms, today, zone, started_on):
             events.append((p['mastered_on'], -1, key, True))
     first_day = min([today, started_on] + [event[0] for event in events])
     baseline = (date.fromisoformat(first_day) - timedelta(days=1)).isoformat()
-    daily = {baseline: 0}
+    daily = {baseline: (0, 0)}
     skills, counts, total = {}, Counter(), 0
+    drawing_counts, drawing_total = Counter(), 0
     for day, _, key, mastered in sorted(events):
         if day > today:
             continue
@@ -36,9 +37,16 @@ def mastery_history(attempts, progress, forms, today, zone, started_on):
         before = counts[form] > 0
         counts[form] += int(mastered) - int(previous)
         total += int(counts[form] > 0) - int(before)
-        daily[day] = total
+        if key[1] == 'drawing':
+            before_drawing = drawing_counts[form] > 0
+            drawing_counts[form] += int(mastered) - int(previous)
+            drawing_total += int(drawing_counts[form] > 0) - int(before_drawing)
+        daily[day] = (total, drawing_total)
     # Current progress is authoritative after imports, deletion, or repairs.
-    daily[today] = len({forms[p['item_id']] for p in progress
-                        if p['item_id'] in forms and p['mode'] in ('flashcards', 'drawing')
-                        and p['status'] in ('mastered', 'review')})
-    return [{'date': day, 'mastered': count} for day, count in sorted(daily.items())]
+    current = [p for p in progress
+               if p['item_id'] in forms and p['mode'] in ('flashcards', 'drawing')
+               and p['status'] in ('mastered', 'review')]
+    daily[today] = (len({forms[p['item_id']] for p in current}),
+                    len({forms[p['item_id']] for p in current if p['mode'] == 'drawing'}))
+    return [{'date': day, 'mastered': count, 'drawing_mastered': drawing}
+            for day, (count, drawing) in sorted(daily.items())]

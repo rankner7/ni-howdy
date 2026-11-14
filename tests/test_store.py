@@ -128,7 +128,7 @@ class StoreTests(unittest.TestCase):
         prompt = self.next_prompt('flashcards')
         self.store.answer(prompt['id'], {'text': 'computer'})
         before = self.store.state()['mastery_history']
-        self.assertEqual(before[-1], {'date': '2026-11-09', 'mastered': 1})
+        self.assertEqual(before[-1], {'date': '2026-11-09', 'mastered': 1, 'drawing_mastered': 0})
         backup = self.store.backup()
         self.store.restore(backup)
         self.assertEqual(self.store.state()['mastery_history'], before)
@@ -140,7 +140,7 @@ class StoreTests(unittest.TestCase):
             prompt = self.next_prompt('flashcards')
             self.store.answer(prompt['id'], {'text': 'incorrect'})
         state = self.store.state()
-        self.assertEqual(state['mastery_history'][-1], {'date': '2026-11-10', 'mastered': 0})
+        self.assertEqual(state['mastery_history'][-1], {'date': '2026-11-10', 'mastered': 0, 'drawing_mastered': 0})
         self.assertEqual(state['stats']['mastered'], 0)
 
     def test_enrolling_a_noun_does_not_pregenerate_phrases(self):
