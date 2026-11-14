@@ -43,19 +43,19 @@ export function setupGuided(drawing,part){
   };
   function draw(now=performance.now()){
     ctx.clearRect(0,0,1024,1024);
-    ctx.fillStyle='#263f38';for(let i=0;i<drawing.strokes.length;i++)ctx.fill(shapes[i]);
+    ctx.fillStyle='#172c55';for(let i=0;i<drawing.strokes.length;i++)ctx.fill(shapes[i]);
     const guide=guides[drawing.strokes.length];
     if(guide){
-      ctx.fillStyle='#c7d9a5';ctx.fill(shapes[drawing.strokes.length]);
-      ctx.setLineDash([10,14]);line(guide,'#527543',9);ctx.setLineDash([]);
+      ctx.fillStyle='#d6e1f2';ctx.fill(shapes[drawing.strokes.length]);
+      ctx.setLineDash([10,14]);line(guide,'#375b98',9);ctx.setLineDash([]);
       const samples=resample(guide),fraction=reduced?1:Math.min(1,(now-started)/1000);
-      if(active===null)line(samples.slice(0,Math.max(1,Math.ceil(samples.length*fraction))),'#527543',20);
-      ctx.beginPath();ctx.arc(...guide[0],22,0,Math.PI*2);ctx.fillStyle='#527543';ctx.fill();
+      if(active===null)line(samples.slice(0,Math.max(1,Math.ceil(samples.length*fraction))),'#375b98',20);
+      ctx.beginPath();ctx.arc(...guide[0],22,0,Math.PI*2);ctx.fillStyle='#375b98';ctx.fill();
       const end=guide.at(-1),before=guide.at(-2),angle=Math.atan2(end[1]-before[1],end[0]-before[0]);
       ctx.beginPath();ctx.moveTo(...end);ctx.lineTo(end[0]-32*Math.cos(angle-.5),end[1]-32*Math.sin(angle-.5));ctx.lineTo(end[0]-32*Math.cos(angle+.5),end[1]-32*Math.sin(angle+.5));ctx.closePath();ctx.fill();
       if(!reduced&&active===null&&fraction<1&&root.isConnected)frame=requestAnimationFrame(draw);
     }
-    line(failed,'#b45b47');line(ink,'#263f38');
+    line(failed,'#b45b47');line(ink,'#172c55');
   }
   function update(message){
     const count=drawing.strokes.length;

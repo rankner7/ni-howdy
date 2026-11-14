@@ -28,7 +28,7 @@ export class Drawing {
   setupCanvas() {
     const canvas=$('canvas',this.root); const context=canvas.getContext('2d');
     const draw=()=>{
-      context.clearRect(0,0,1024,1024); context.strokeStyle='#263f38'; context.lineWidth=20; context.lineCap='round'; context.lineJoin='round';
+      context.clearRect(0,0,1024,1024); context.strokeStyle='#172c55'; context.lineWidth=20; context.lineCap='round'; context.lineJoin='round';
       for(const stroke of this.strokes) { if(!stroke.length)continue; context.beginPath(); context.moveTo(...stroke[0]); for(const p of stroke.slice(1))context.lineTo(...p); context.stroke(); }
     };
     let active=false;
