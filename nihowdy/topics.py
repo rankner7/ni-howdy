@@ -17,7 +17,10 @@ TOPICS = [
     ('actions', 'Actions & descriptions', '做', 'Common verbs, qualities, and words that connect ideas'),
     ('leisure', 'Leisure & culture', '樂', 'Hobbies, sports, games, music, arts, festivals, and traditions'),
 ]
-COLLECTIONS = [('essentials', 'Everyday essentials', '日', 'A beginner collection across subjects')]
+COLLECTIONS = [
+    ('core', 'Core starter · 100 words', '初', 'Useful words for everyday beginner phrases'),
+    ('essentials', 'Everyday essentials', '日', 'A beginner collection across subjects'),
+]
 TAXONOMY_VERSION = 1
 
 # Specific subjects precede general actions; ties keep this order. Match whole

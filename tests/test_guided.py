@@ -24,7 +24,8 @@ GUIDE = {'strokes': ['M 100 200 L 800 200 L 800 230 L 100 230 Z',
          'medians': [[[100, 215], [800, 215]], [[455, 100], [455, 800]]]}
 HANZI = {ch: {'strokes': GUIDE['strokes'], 'medians': GUIDE['medians']} for ch in ''.join(WORDS)}
 ITEMS = [dict(id=w, text=w, kind='word', topic='nature', pinyin='test', english=w,
-              answers=[w], chinese_answers=[w], tokens=[], sources=[], characters=[])
+              answers=[w], chinese_answers=[w], tokens=[], sources=[], characters=[],
+              collections=['core'] if w in WORDS[:12] else [])
          for w in WORDS]
 
 

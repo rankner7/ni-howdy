@@ -43,7 +43,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -89,7 +90,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -136,7 +138,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -185,7 +188,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -233,7 +237,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -280,7 +285,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -327,7 +333,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -381,7 +388,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -427,7 +435,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -474,7 +483,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -520,7 +530,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -566,7 +577,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -612,7 +624,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -659,7 +672,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -706,7 +720,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -759,7 +774,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -806,7 +822,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -853,7 +870,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -898,6 +916,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -943,7 +964,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -989,7 +1011,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -1040,6 +1063,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -1242,6 +1268,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -1549,6 +1578,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2387,6 +2419,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2438,6 +2473,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2489,6 +2527,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2533,6 +2574,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2577,6 +2621,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2665,6 +2712,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2716,6 +2766,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2767,6 +2820,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2818,6 +2874,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2869,6 +2928,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -2966,6 +3028,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -3058,6 +3123,9 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ],
+    "collections": [
+      "core"
     ]
   },
   {
@@ -3104,7 +3172,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3150,7 +3219,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3207,7 +3277,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3260,7 +3331,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3313,7 +3385,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3359,7 +3432,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3412,7 +3486,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3472,7 +3547,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3526,7 +3602,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3619,7 +3696,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3665,7 +3743,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3820,7 +3899,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3866,7 +3946,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3914,7 +3995,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -3960,7 +4042,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4014,7 +4097,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4063,7 +4147,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4110,7 +4195,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4164,7 +4250,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4218,7 +4305,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4325,7 +4413,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4378,7 +4467,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4432,7 +4522,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4493,7 +4584,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -4601,7 +4693,8 @@
       }
     ],
     "collections": [
-      "essentials"
+      "essentials",
+      "core"
     ]
   },
   {
@@ -5497,6 +5590,1956 @@
         "title": "Make Me a Hanzi: character structure",
         "url": "https://github.com/skishore/makemeahanzi"
       }
+    ]
+  },
+  {
+    "id": "這裡",
+    "kind": "word",
+    "text": "這裡",
+    "pinyin": "zhè lǐ",
+    "english": "here",
+    "answers": [
+      "here"
+    ],
+    "chinese_answers": [
+      "這裡"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Refers to a place near the speaker: 我在這裡 means I am here.",
+    "usage_note": "Refers to a place near the speaker: 我在這裡 means I am here.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "這",
+        "definition": "this, these; such; here",
+        "decomposition": "⿺辶言",
+        "note": "言 relates to meaning; 辶 supplies a sound clue. words",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "裡",
+        "definition": "unit of distance equal to 0.5km; village; lane",
+        "decomposition": "⿰衤里",
+        "note": "Unit of measure for farm 田 land 土; 衤 provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%80%99%E8%A3%A1"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "那裡",
+    "kind": "word",
+    "text": "那裡",
+    "pinyin": "nà lǐ",
+    "english": "there",
+    "answers": [
+      "there"
+    ],
+    "chinese_answers": [
+      "那裡"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Refers to a place away from the speaker: 他在那裡 means he is there.",
+    "usage_note": "Refers to a place away from the speaker: 他在那裡 means he is there.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "那",
+        "definition": "that, that one, those",
+        "decomposition": "⿰⿹？？阝",
+        "note": "No supported historical explanation is available in the local dataset.",
+        "kind": "construction"
+      },
+      {
+        "character": "裡",
+        "definition": "unit of distance equal to 0.5km; village; lane",
+        "decomposition": "⿰衤里",
+        "note": "Unit of measure for farm 田 land 土; 衤 provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%82%A3%E8%A3%A1"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "了",
+    "kind": "word",
+    "text": "了",
+    "pinyin": "le",
+    "english": "change particle; completion particle",
+    "answers": [
+      "change particle",
+      "completion particle"
+    ],
+    "chinese_answers": [
+      "了"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Sentence-final 了 can mark a new situation; after a verb it can mark a completed event. It is not a general past-tense ending.",
+    "usage_note": "Sentence-final 了 can mark a new situation; after a verb it can mark a completed event. It is not a general past-tense ending.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "了",
+        "definition": "clear; to finish; particle of completed action",
+        "decomposition": "⿱乛亅",
+        "note": "A child swaddled in blanklets; compare 子",
+        "kind": "pictographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E4%BA%86"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "呢",
+    "kind": "word",
+    "text": "呢",
+    "pinyin": "ne",
+    "english": "follow-up question particle",
+    "answers": [
+      "follow-up question particle"
+    ],
+    "chinese_answers": [
+      "呢"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Ask a follow-up with a topic plus 呢: 我很好，你呢？ means I am well; how about you?",
+    "usage_note": "Ask a follow-up with a topic plus 呢: 我很好，你呢？ means I am well; how about you?",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "呢",
+        "definition": "wool; interrogative or emphatic final particle",
+        "decomposition": "⿰口尼",
+        "note": "口 relates to meaning; 尼 supplies a sound clue. mouth",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%91%A2"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "都",
+    "kind": "word",
+    "text": "都",
+    "pinyin": "dōu",
+    "english": "all; both",
+    "answers": [
+      "all",
+      "both"
+    ],
+    "chinese_answers": [
+      "都"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Usually comes before the verb: 我們都喜歡茶 means we all like tea.",
+    "usage_note": "Usually comes before the verb: 我們都喜歡茶 means we all like tea.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "都",
+        "definition": "all, each, entirely, whole; metropolis; capital",
+        "decomposition": "⿰者阝",
+        "note": "阝 relates to meaning; 者 supplies a sound clue. city",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%83%BD"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "個",
+    "kind": "word",
+    "text": "個",
+    "pinyin": "gè",
+    "english": "general classifier; general counting word",
+    "answers": [
+      "general classifier",
+      "general counting word"
+    ],
+    "chinese_answers": [
+      "個"
+    ],
+    "topic": "shopping",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "A general classifier between a number or demonstrative and many nouns: 一個人, 這個東西. Some nouns use a more specific classifier.",
+    "usage_note": "A general classifier between a number or demonstrative and many nouns: 一個人, 這個東西. Some nouns use a more specific classifier.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "個",
+        "definition": "this, that; single; measure word for individuals",
+        "decomposition": "⿰亻固",
+        "note": "亻 relates to meaning; 固 supplies a sound clue. person",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%80%8B"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "杯",
+    "kind": "word",
+    "text": "杯",
+    "pinyin": "bēi",
+    "english": "cup; cupful",
+    "answers": [
+      "cup",
+      "cupful"
+    ],
+    "chinese_answers": [
+      "杯"
+    ],
+    "topic": "food",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "A cup, or a counting word for drinks served in cups: 兩杯茶 means two cups of tea.",
+    "usage_note": "A cup, or a counting word for drinks served in cups: 兩杯茶 means two cups of tea.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "杯",
+        "definition": "cup, glass; measure word for liquids",
+        "decomposition": "⿰木不",
+        "note": "木 relates to meaning; 不 supplies a sound clue. tree",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%9D%AF"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "會",
+    "kind": "word",
+    "text": "會",
+    "pinyin": "huì",
+    "english": "can; to know how to",
+    "answers": [
+      "can",
+      "to know how to"
+    ],
+    "chinese_answers": [
+      "會"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use before a verb for a learned ability: 我會說中文 means I can speak Chinese. It can also express a likely future event.",
+    "usage_note": "Use before a verb for a learned ability: 我會說中文 means I can speak Chinese. It can also express a likely future event.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "會",
+        "definition": "to assemble, to meet; meeting; association, group",
+        "decomposition": "⿱⿱亼？日",
+        "note": "People 人 speaking 日",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%9C%83"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "懂",
+    "kind": "word",
+    "text": "懂",
+    "pinyin": "dǒng",
+    "english": "to understand",
+    "answers": [
+      "to understand"
+    ],
+    "chinese_answers": [
+      "懂"
+    ],
+    "topic": "school",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "我不懂 means I do not understand; 你懂嗎？ asks whether someone understands.",
+    "usage_note": "我不懂 means I do not understand; 你懂嗎？ asks whether someone understands.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "懂",
+        "definition": "to understand, to know",
+        "decomposition": "⿰忄董",
+        "note": "忄 relates to meaning; 董 supplies a sound clue. mind",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%87%82"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "來",
+    "kind": "word",
+    "text": "來",
+    "pinyin": "lái",
+    "english": "to come",
+    "answers": [
+      "to come"
+    ],
+    "chinese_answers": [
+      "來"
+    ],
+    "topic": "travel",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Movement toward the speaker or a reference point. 去 expresses movement away.",
+    "usage_note": "Movement toward the speaker or a reference point. 去 expresses movement away.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "來",
+        "definition": "to arrive, to come, to return; in the future, later on",
+        "decomposition": "⿻木从",
+        "note": "A wheat plant that has just borne fruit; compare 来",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E4%BE%86"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "回",
+    "kind": "word",
+    "text": "回",
+    "pinyin": "huí",
+    "english": "to return; to go back",
+    "answers": [
+      "to return",
+      "to go back"
+    ],
+    "chinese_answers": [
+      "回"
+    ],
+    "topic": "travel",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use before a destination: 回家 means to go home.",
+    "usage_note": "Use before a destination: 回家 means to go home.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "回",
+        "definition": "to return, to turn around; a time",
+        "decomposition": "⿴囗口",
+        "note": "Originally, a spiral signifying return",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%9B%9E"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "用",
+    "kind": "word",
+    "text": "用",
+    "pinyin": "yòng",
+    "english": "to use",
+    "answers": [
+      "to use"
+    ],
+    "chinese_answers": [
+      "用"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use before the thing being used: 用手機 means to use a mobile phone.",
+    "usage_note": "Use before the thing being used: 用手機 means to use a mobile phone.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "用",
+        "definition": "to use, to employ, to apply; use",
+        "decomposition": "⿵冂？",
+        "note": "No supported historical explanation is available in the local dataset.",
+        "kind": "construction"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E7%94%A8"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "聽",
+    "kind": "word",
+    "text": "聽",
+    "pinyin": "tīng",
+    "english": "to listen; to hear",
+    "answers": [
+      "to listen",
+      "to hear"
+    ],
+    "chinese_answers": [
+      "聽"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Listening or hearing. 聽不懂 means to hear but not understand.",
+    "usage_note": "Listening or hearing. 聽不懂 means to hear but not understand.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "聽",
+        "definition": "to hear, to listen; to understand; to obey",
+        "decomposition": "⿰⿹耳王⿱⿱十罒⿱一心",
+        "note": "Someone listening 耳 attentively 心",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E8%81%BD"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "說",
+    "kind": "word",
+    "text": "說",
+    "pinyin": "shuō",
+    "english": "to speak; to say",
+    "answers": [
+      "to speak",
+      "to say"
+    ],
+    "chinese_answers": [
+      "說"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use with a language or spoken content: 說中文 means to speak Chinese.",
+    "usage_note": "Use with a language or spoken content: 說中文 means to speak Chinese.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "說",
+        "definition": "to speak, to say; to scold, to upbraid",
+        "decomposition": "⿰言兌",
+        "note": "言 relates to meaning; 兌 supplies a sound clue. speech",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E8%AA%AA"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "學習",
+    "kind": "word",
+    "text": "學習",
+    "pinyin": "xué xí",
+    "english": "to learn; to study",
+    "answers": [
+      "to learn",
+      "to study"
+    ],
+    "chinese_answers": [
+      "學習"
+    ],
+    "topic": "school",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "學習中文 means to learn Chinese. 學 is a related shorter verb, but a separate vocabulary entry.",
+    "usage_note": "學習中文 means to learn Chinese. 學 is a related shorter verb, but a separate vocabulary entry.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "學",
+        "definition": "learning, knowledge, science; to study, to go to school; -ology",
+        "decomposition": "⿳？冖子",
+        "note": "A building 冖 where children 子 study",
+        "kind": "ideographic"
+      },
+      {
+        "character": "習",
+        "definition": "to study, to practice; habit",
+        "decomposition": "⿱羽白",
+        "note": "Birds flying 羽 in the daytime 白",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%AD%B8%E7%BF%92"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "工作",
+    "kind": "word",
+    "text": "工作",
+    "pinyin": "gōng zuò",
+    "english": "to work; job; work",
+    "answers": [
+      "to work",
+      "job",
+      "work"
+    ],
+    "chinese_answers": [
+      "工作"
+    ],
+    "topic": "work",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Can be a verb or a noun: 今天工作 means to work today; 我的工作 means my job.",
+    "usage_note": "Can be a verb or a noun: 今天工作 means to work today; 我的工作 means my job.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "工",
+        "definition": "labor, work; laborer, worker",
+        "decomposition": "⿱一丄",
+        "note": "A spade or other workman's tool",
+        "kind": "pictographic"
+      },
+      {
+        "character": "作",
+        "definition": "to make; to write, to compose; to act, to perform",
+        "decomposition": "⿰亻乍",
+        "note": "A person 亻 making something for the first time 乍; 乍 also provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%B7%A5%E4%BD%9C"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "知道",
+    "kind": "word",
+    "text": "知道",
+    "pinyin": "zhī dào",
+    "english": "to know",
+    "answers": [
+      "to know"
+    ],
+    "chinese_answers": [
+      "知道"
+    ],
+    "topic": "school",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Knowing information or a fact. 不知道 means not to know; 懂 emphasizes understanding.",
+    "usage_note": "Knowing information or a fact. 不知道 means not to know; 懂 emphasizes understanding.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "知",
+        "definition": "to know, to perceive, to comprehend",
+        "decomposition": "⿰矢口",
+        "note": "口 relates to meaning; 矢 supplies a sound clue. mouth",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "道",
+        "definition": "method, way; path, road",
+        "decomposition": "⿺辶首",
+        "note": "辶 relates to meaning; 首 supplies a sound clue. walk",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E7%9F%A5%E9%81%93"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "幫忙",
+    "kind": "word",
+    "text": "幫忙",
+    "pinyin": "bāng máng",
+    "english": "to help; to lend a hand",
+    "answers": [
+      "to help",
+      "to lend a hand"
+    ],
+    "chinese_answers": [
+      "幫忙"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "可以幫忙嗎？ is a way to ask whether someone can help.",
+    "usage_note": "可以幫忙嗎？ is a way to ask whether someone can help.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "幫",
+        "definition": "to help, to assist; to support, to defend; party; gang",
+        "decomposition": "⿱封帛",
+        "note": "A feudal 封 flag 帛; 封 also provides the pronunciation",
+        "kind": "ideographic"
+      },
+      {
+        "character": "忙",
+        "definition": "busy, hurried, pressed for time",
+        "decomposition": "⿰忄亡",
+        "note": "A heart 忄 faced with death 亡; 亡 also provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%B9%AB%E5%BF%99"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "飯",
+    "kind": "word",
+    "text": "飯",
+    "pinyin": "fàn",
+    "english": "cooked rice; rice; meal",
+    "answers": [
+      "cooked rice",
+      "rice",
+      "meal"
+    ],
+    "chinese_answers": [
+      "飯"
+    ],
+    "topic": "food",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Can mean cooked rice or a meal. 吃飯 commonly means to eat or have a meal.",
+    "usage_note": "Can mean cooked rice or a meal. 吃飯 commonly means to eat or have a meal.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "飯",
+        "definition": "meal, food; cooked rice",
+        "decomposition": "⿰飠反",
+        "note": "飠 relates to meaning; 反 supplies a sound clue. food",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%A3%AF"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "麵",
+    "kind": "word",
+    "text": "麵",
+    "pinyin": "miàn",
+    "english": "noodles",
+    "answers": [
+      "noodles"
+    ],
+    "chinese_answers": [
+      "麵"
+    ],
+    "topic": "food",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "The Traditional form for noodles. 我要吃麵 means I want to eat noodles.",
+    "usage_note": "The Traditional form for noodles. 我要吃麵 means I want to eat noodles.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "麵",
+        "definition": "face; surface, side; plane, dimension",
+        "decomposition": "⿰麥面",
+        "note": "面 relates to meaning; 麥 supplies a sound clue. face",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%BA%B5"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "菜",
+    "kind": "word",
+    "text": "菜",
+    "pinyin": "cài",
+    "english": "vegetables; vegetable; dish",
+    "answers": [
+      "vegetables",
+      "vegetable",
+      "dish"
+    ],
+    "chinese_answers": [
+      "菜"
+    ],
+    "topic": "food",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Can refer to vegetables or a prepared dish; context determines the meaning.",
+    "usage_note": "Can refer to vegetables or a prepared dish; context determines the meaning.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "菜",
+        "definition": "vegetables; order, dish; food",
+        "decomposition": "⿱艹采",
+        "note": "艹 relates to meaning; 采 supplies a sound clue. plant",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E8%8F%9C"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "錢",
+    "kind": "word",
+    "text": "錢",
+    "pinyin": "qián",
+    "english": "money",
+    "answers": [
+      "money"
+    ],
+    "chinese_answers": [
+      "錢"
+    ],
+    "topic": "shopping",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "多少錢？ asks how much something costs.",
+    "usage_note": "多少錢？ asks how much something costs.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "錢",
+        "definition": "money, currency, coins",
+        "decomposition": "⿰釒戔",
+        "note": "釒 relates to meaning; 戔 supplies a sound clue. money",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%8C%A2"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "東西",
+    "kind": "word",
+    "text": "東西",
+    "pinyin": "dōng xi",
+    "english": "thing; things; stuff",
+    "answers": [
+      "thing",
+      "things",
+      "stuff"
+    ],
+    "chinese_answers": [
+      "東西"
+    ],
+    "topic": "home",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "In this sense 西 has a neutral tone. The separate reading dōng xī means east and west.",
+    "usage_note": "In this sense 西 has a neutral tone. The separate reading dōng xī means east and west.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "東",
+        "definition": "east, eastern, eastward",
+        "decomposition": "⿻木日",
+        "note": "The sun 日 rising behind a tree 木; compare 西",
+        "kind": "ideographic"
+      },
+      {
+        "character": "西",
+        "definition": "west, western, westward",
+        "decomposition": "⿻兀囗",
+        "note": "A bird settling into its nest, representing sunset; compare 東",
+        "kind": "pictographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%9D%B1%E8%A5%BF"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "商店",
+    "kind": "word",
+    "text": "商店",
+    "pinyin": "shāng diàn",
+    "english": "shop; store",
+    "answers": [
+      "shop",
+      "store"
+    ],
+    "chinese_answers": [
+      "商店"
+    ],
+    "topic": "shopping",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "A general word for a shop or store. 我想去商店 means I would like to go to the shop.",
+    "usage_note": "A general word for a shop or store. 我想去商店 means I would like to go to the shop.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "商",
+        "definition": "commerce, business, trade",
+        "decomposition": "⿱⿱亠丷冏",
+        "note": "冏 relates to meaning; 章 supplies a sound clue. bright",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "店",
+        "definition": "shop, store; inn, hotel",
+        "decomposition": "⿸广占",
+        "note": "广 relates to meaning; 占 supplies a sound clue. building",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%95%86%E5%BA%97"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "餐廳",
+    "kind": "word",
+    "text": "餐廳",
+    "pinyin": "cān tīng",
+    "english": "restaurant",
+    "answers": [
+      "restaurant"
+    ],
+    "chinese_answers": [
+      "餐廳"
+    ],
+    "topic": "food",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "A place to eat: 餐廳在哪裡？ means where is the restaurant?",
+    "usage_note": "A place to eat: 餐廳在哪裡？ means where is the restaurant?",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "餐",
+        "definition": "to eat, to dine; meal, food",
+        "decomposition": "⿱⿰歺又食",
+        "note": "食 relates to meaning; the phonetic component supplies a sound clue. food",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "廳",
+        "definition": "hall, central room",
+        "decomposition": "⿸广聽",
+        "note": "广 relates to meaning; 聽 supplies a sound clue. spacious",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E9%A4%90%E5%BB%B3"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "廁所",
+    "kind": "word",
+    "text": "廁所",
+    "pinyin": "cè suǒ",
+    "english": "restroom; toilet; bathroom",
+    "answers": [
+      "restroom",
+      "toilet",
+      "bathroom"
+    ],
+    "chinese_answers": [
+      "廁所"
+    ],
+    "topic": "home",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "廁所在哪裡？ is a useful way to ask where the restroom is.",
+    "usage_note": "廁所在哪裡？ is a useful way to ask where the restroom is.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "廁",
+        "definition": "toilet, washroom; to mingle",
+        "decomposition": "⿸广則",
+        "note": "广 relates to meaning; 則 supplies a sound clue. building",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "所",
+        "definition": "place, location; \"that which\", a particle introducing a passive clause",
+        "decomposition": "⿰户斤",
+        "note": "An axe 斤 swung at a door 户",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%BB%81%E6%89%80"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "名字",
+    "kind": "word",
+    "text": "名字",
+    "pinyin": "míng zi",
+    "english": "name",
+    "answers": [
+      "name"
+    ],
+    "chinese_answers": [
+      "名字"
+    ],
+    "topic": "people",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "你叫什麼名字？ asks someone's name; 叫 is introduced separately beyond this starter set.",
+    "usage_note": "你叫什麼名字？ asks someone's name; 叫 is introduced separately beyond this starter set.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "名",
+        "definition": "name; position, rank, title",
+        "decomposition": "⿸夕口",
+        "note": "A name called out 口 to hail someone at night 夕",
+        "kind": "ideographic"
+      },
+      {
+        "character": "字",
+        "definition": "character, letter, symbol, word",
+        "decomposition": "⿱宀子",
+        "note": "A child 子 in a house 宀; 子 also provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%90%8D%E5%AD%97"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "現在",
+    "kind": "word",
+    "text": "現在",
+    "pinyin": "xiàn zài",
+    "english": "now",
+    "answers": [
+      "now"
+    ],
+    "chinese_answers": [
+      "現在"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Usually placed before the verb or at the start of a sentence: 我現在很忙 means I am busy now.",
+    "usage_note": "Usually placed before the verb or at the start of a sentence: 我現在很忙 means I am busy now.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "現",
+        "definition": "to appear, to manifest; current, now",
+        "decomposition": "⿰王見",
+        "note": "To see 見 jade 王; 見 also provides the pronunciation",
+        "kind": "ideographic"
+      },
+      {
+        "character": "在",
+        "definition": "at, in, on; to exist; used to indicate the present progressive tense",
+        "decomposition": "⿸才土",
+        "note": "土 relates to meaning; 才 supplies a sound clue. earth",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E7%8F%BE%E5%9C%A8"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "時候",
+    "kind": "word",
+    "text": "時候",
+    "pinyin": "shí hou",
+    "english": "time; occasion",
+    "answers": [
+      "time",
+      "occasion"
+    ],
+    "chinese_answers": [
+      "時候"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "什麼時候 means when. Use it to ask about the time an event happens.",
+    "usage_note": "什麼時候 means when. Use it to ask about the time an event happens.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "時",
+        "definition": "time, season; period, era, age",
+        "decomposition": "⿰日寺",
+        "note": "日 relates to meaning; 寺 supplies a sound clue. day",
+        "kind": "pictophonetic"
+      },
+      {
+        "character": "候",
+        "definition": "to wait, to expect; to visit; to greet",
+        "decomposition": "⿰亻矦",
+        "note": "亻 relates to meaning; 矦 supplies a sound clue. person",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%99%82%E5%80%99"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "十",
+    "kind": "word",
+    "text": "十",
+    "pinyin": "shí",
+    "english": "ten",
+    "answers": [
+      "ten"
+    ],
+    "chinese_answers": [
+      "十"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "十塊 means ten dollars in a local currency context.",
+    "usage_note": "十塊 means ten dollars in a local currency context.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "十",
+        "definition": "ten, tenth; complete; perfect",
+        "decomposition": "⿻一丨",
+        "note": "No supported historical explanation is available in the local dataset.",
+        "kind": "construction"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%8D%81"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "兩",
+    "kind": "word",
+    "text": "兩",
+    "pinyin": "liǎng",
+    "english": "two",
+    "answers": [
+      "two"
+    ],
+    "chinese_answers": [
+      "兩"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use before classifiers for quantities: 兩個人, 兩杯茶. 二 is used for the digit, counting, and many numerical expressions.",
+    "usage_note": "Use before classifiers for quantities: 兩個人, 兩杯茶. 二 is used for the digit, counting, and many numerical expressions.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "兩",
+        "definition": "two, both, pair, couple; ounce",
+        "decomposition": "⿱一⿻巾⿰入入",
+        "note": "Two people 入 together in a cart",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%85%A9"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "塊",
+    "kind": "word",
+    "text": "塊",
+    "pinyin": "kuài",
+    "english": "dollar; dollars; piece",
+    "answers": [
+      "dollar",
+      "dollars",
+      "piece"
+    ],
+    "chinese_answers": [
+      "塊"
+    ],
+    "topic": "shopping",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "A colloquial currency unit, normally New Taiwan dollars in Taiwan. It also counts pieces or chunks.",
+    "usage_note": "A colloquial currency unit, normally New Taiwan dollars in Taiwan. It also counts pieces or chunks.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "塊",
+        "definition": "piece, lump, chunk; dollar; measure word for currency",
+        "decomposition": "⿰土鬼",
+        "note": "土 relates to meaning; 鬼 supplies a sound clue. earth",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%A1%8A"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "多",
+    "kind": "word",
+    "text": "多",
+    "pinyin": "duō",
+    "english": "many; much",
+    "answers": [
+      "many",
+      "much"
+    ],
+    "chinese_answers": [
+      "多"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Describes a large quantity. 多少 combines with 少 to ask how much or how many.",
+    "usage_note": "Describes a large quantity. 多少 combines with 少 to ask how much or how many.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "多",
+        "definition": "much, many, multi-; more than, over",
+        "decomposition": "⿱夕夕",
+        "note": "Two nights 夕, suggesting many",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%A4%9A"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "少",
+    "kind": "word",
+    "text": "少",
+    "pinyin": "shǎo",
+    "english": "few; little",
+    "answers": [
+      "few",
+      "little"
+    ],
+    "chinese_answers": [
+      "少"
+    ],
+    "topic": "actions",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Describes a small quantity. This starter entry uses shǎo, not the separate reading shào.",
+    "usage_note": "Describes a small quantity. This starter entry uses shǎo, not the separate reading shào.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "少",
+        "definition": "few, little; less; inadequate",
+        "decomposition": "⿱小丿",
+        "note": "Grains of sand; 小 provides the pronunciation and meaning",
+        "kind": "pictographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%B0%91"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "熱",
+    "kind": "word",
+    "text": "熱",
+    "pinyin": "rè",
+    "english": "hot",
+    "answers": [
+      "hot"
+    ],
+    "chinese_answers": [
+      "熱"
+    ],
+    "topic": "nature",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use for temperature: 茶很熱 means the tea is hot. A descriptive predicate does not need 是.",
+    "usage_note": "Use for temperature: 茶很熱 means the tea is hot. A descriptive predicate does not need 是.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "熱",
+        "definition": "heat, fever, zeal",
+        "decomposition": "⿱埶灬",
+        "note": "灬 relates to meaning; 埶 supplies a sound clue. fire",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E7%86%B1"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "冷",
+    "kind": "word",
+    "text": "冷",
+    "pinyin": "lěng",
+    "english": "cold",
+    "answers": [
+      "cold"
+    ],
+    "chinese_answers": [
+      "冷"
+    ],
+    "topic": "nature",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "Use for temperature: 水很冷 means the water is cold.",
+    "usage_note": "Use for temperature: 水很冷 means the water is cold.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "冷",
+        "definition": "cold, cool; lonely",
+        "decomposition": "⿰冫令",
+        "note": "冫 relates to meaning; 令 supplies a sound clue. ice",
+        "kind": "pictophonetic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%86%B7"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "早",
+    "kind": "word",
+    "text": "早",
+    "pinyin": "zǎo",
+    "english": "early",
+    "answers": [
+      "early"
+    ],
+    "chinese_answers": [
+      "早"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "今天很早 means it is early today. 早 can also be used as a short morning greeting.",
+    "usage_note": "今天很早 means it is early today. 早 can also be used as a short morning greeting.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "早",
+        "definition": "early; soon; morning",
+        "decomposition": "⿱日十",
+        "note": "The first rays 十 of the sun 日",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%97%A9"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "晚",
+    "kind": "word",
+    "text": "晚",
+    "pinyin": "wǎn",
+    "english": "late",
+    "answers": [
+      "late"
+    ],
+    "chinese_answers": [
+      "晚"
+    ],
+    "topic": "time",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "現在很晚 means it is late now. Distinguish being late in the day from the action of arriving late.",
+    "usage_note": "現在很晚 means it is late now. Distinguish being late in the day from the action of arriving late.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "晚",
+        "definition": "night, evening; late",
+        "decomposition": "⿰日免",
+        "note": "Avoiding 免 the sun 日; 免 also provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E6%99%9A"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
+    ]
+  },
+  {
+    "id": "忙",
+    "kind": "word",
+    "text": "忙",
+    "pinyin": "máng",
+    "english": "busy",
+    "answers": [
+      "busy"
+    ],
+    "chinese_answers": [
+      "忙"
+    ],
+    "topic": "work",
+    "tokens": [],
+    "region": "TW",
+    "script": "Hant",
+    "status": "ready",
+    "explanation": "我今天很忙 means I am busy today. A descriptive predicate does not need 是.",
+    "usage_note": "我今天很忙 means I am busy today. A descriptive predicate does not need 是.",
+    "explanation_origin": "Cached source-grounded editorial explanation",
+    "characters": [
+      {
+        "character": "忙",
+        "definition": "busy, hurried, pressed for time",
+        "decomposition": "⿰忄亡",
+        "note": "A heart 忄 faced with death 亡; 亡 also provides the pronunciation",
+        "kind": "ideographic"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Taiwan Ministry of Education dictionary",
+        "url": "https://www.moedict.tw/%E5%BF%99"
+      },
+      {
+        "title": "CC-CEDICT dictionary",
+        "url": "https://cc-cedict.org/wiki/"
+      },
+      {
+        "title": "Make Me a Hanzi: character structure",
+        "url": "https://github.com/skishore/makemeahanzi"
+      }
+    ],
+    "collections": [
+      "core"
     ]
   }
 ]

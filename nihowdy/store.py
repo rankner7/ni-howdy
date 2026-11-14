@@ -17,7 +17,7 @@ from .answers import (correct_chinese_phrase, correct_english_phrase, correct_pi
                       with_word_answers, word_sense_matches)
 from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOSS, TOPIC_KEYWORDS,
                       component_groups, construction, dictionary_rows, infer_topic, load_hanzi,
-                      plain_pinyin, sources_for, starter_items)
+                      plain_pinyin, sources_for, starter_items, core_starter_items)
 from .topics import TOPICS, COLLECTIONS, TAXONOMY_VERSION
 from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
@@ -84,13 +84,59 @@ class Store:
                 for item in starter_items():
                     if item['kind'] == 'word':
                         db.execute("INSERT INTO items VALUES (?,?)", (item["id"], encode(with_word_answers(item))))
-                for word in ["我", "你", "也", "要", "喝", "水", "茶", "好", "一", "二", "三", "電腦"]:
-                    self._enroll(db, word)
+                for item in core_starter_items(starter_items()):
+                    self._enroll(db, item['id'])
             self._repair_generated_senses(db)
             self._repair_dictionary_conjunction(db)
             self._migrate_topics(db)
             self._migrate_essentials(db)
+            self._migrate_core_starter(db)
             self._activate_waiting(db)
+
+    def _core_starter_ids(self, db):
+        """Reuse matching saved senses, including dictionary IDs and deletions."""
+        existing = self._items(db, include_deleted=True)
+        enrolled = {r[0] for r in db.execute('SELECT DISTINCT item_id FROM progress')}
+        result = []
+        for starter in core_starter_items(starter_items()):
+            matches = [item for item in existing.values()
+                       if item['kind'] == 'word' and item['text'] == starter['text']
+                       and reading_key(item['pinyin']) == reading_key(starter['pinyin'])
+                       and any(word_sense_matches(item, answer) for answer in starter['answers'])]
+            if matches:
+                item = min(matches, key=lambda i: (bool(i.get('deleted')), i['id'] not in enrolled,
+                                                   i['id'] != starter['id'], i['id']))
+                if 'core' not in item.get('collections', []):
+                    item['collections'] = sorted(set(item.get('collections', [])) | {'core'})
+                    db.execute('UPDATE items SET data=? WHERE id=?', (encode(item), item['id']))
+            else:
+                item = with_word_answers(starter)
+                if item['id'] in existing:
+                    item = dict(item, id='core:' + uuid.uuid4().hex)
+                db.execute('INSERT INTO items VALUES (?,?)', (item['id'], encode(item)))
+                existing[item['id']] = item
+            result.append(item['id'])
+        return result
+
+    def _migrate_core_starter(self, db):
+        """Make the collection discoverable without enrolling existing learners."""
+        if self._settings(db).get('core_starter_catalog_version', 0) >= 1:
+            return
+        self._core_starter_ids(db)
+        db.execute("INSERT OR REPLACE INTO settings VALUES ('core_starter_catalog_version','1')")
+
+    def enroll_core_starter(self):
+        """Explicitly add the starter set, preserving saved progress and history."""
+        with self.db() as db:
+            added = []
+            for item_id in self._core_starter_ids(db):
+                item = self._item(db, item_id, include_deleted=True)
+                if item.get('deleted') or not db.execute(
+                        'SELECT 1 FROM progress WHERE item_id=?', (item_id,)).fetchone():
+                    added.append(item_id)
+                self._restore_item(db, item_id)
+                self._enroll(db, item_id)
+            return added
 
     def _migrate_essentials(self, db):
         """Add curated collection entries without changing existing progress."""
@@ -1128,5 +1174,6 @@ class Store:
             self._repair_dictionary_conjunction(db)
             self._migrate_topics(db)
             self._migrate_essentials(db)
+            self._migrate_core_starter(db)
             self._activate_waiting(db)
         return {"restored": True}

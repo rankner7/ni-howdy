@@ -129,6 +129,8 @@ class TopicMigrationTests(unittest.TestCase):
         self.assertEqual(self.store.backup(), upgraded)
 
     def test_collection_generation_retains_subjects_and_ignores_unrelated_words(self):
+        with self.store.db() as db:
+            db.execute("DELETE FROM progress WHERE item_id='他'")
         self.store.vocabulary = VocabularyPolicy({'他': 100, '毛衣': 1000})
         result = self.store.generate_entries({'source': 'category', 'category': 'essentials', 'count': 2})
         self.assertEqual([(item['text'], item['topic']) for item in result['items']], [('他', 'people')])
@@ -147,6 +149,7 @@ class TopicMigrationTests(unittest.TestCase):
         tables = backup['tables']
         tables['settings'] = [r for r in tables['settings'] if r['key'] != 'essentials_catalog_version']
         tables['items'] = [r for r in tables['items'] if r['id'] not in {'不', '嗎'}]
+        tables['progress'] = [r for r in tables['progress'] if r['item_id'] not in {'不', '嗎'}]
         saved = dict(next(i for i in self.catalog if i['id'] == '不'), id='dictionary:not',
                      english='not', answers=['not'], collections=[])
         tables['items'].append(dict(id=saved['id'], data=json.dumps(saved, ensure_ascii=False)))

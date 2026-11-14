@@ -3,6 +3,10 @@
 A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional characters with tone-marked Hanyu Pinyin, discover character construction, and build vocabulary around your interests.
 
 ## TODOS
+ - account management
+
+## Fixes
+  - 媒體 méi tǐ --> "media, esp. news media"
  
 ## Run locally
 
@@ -43,6 +47,14 @@ The server binds only to `127.0.0.1`. Stop it with Ctrl+C. Your library and prog
 English answers match a stored list of legitimate translations. Case and surrounding whitespace are ignored; punctuation and spelling remain significant. Articles are accepted only when explicitly included in the answer list. Spelling and basic grammar feedback appears before submission without editing your answer or changing grading.
 
 ## Personal vocabulary and explanations
+
+Fresh installations start with **100 core words and expressions** spanning people,
+politeness, sentence building, questions, common actions, food, places, time,
+quantities, and descriptions. All 100 join both vocabulary modes; the existing
+30-card and 8-word drawing limits control introductions. In the word library,
+choose **Core starter · 100 words** to browse the collection. Other curated words
+remain available under **Discover all**. Existing installations receive the new
+catalog entries without changing their deck or saved progress.
 
 Everyday essentials includes common pronouns, questions, negation, demonstratives, connectors and polite expressions. Existing libraries receive the expanded collection without resetting progress. They are available to add from the library; collection generation also selects eligible words with observed frequency. The upgrade does not automatically enroll them.
 

@@ -127,3 +127,9 @@ def component_groups(char, hanzi):
 
 def starter_items():
     return json.loads((DATA / "starter.json").read_text())
+
+
+def core_starter_items(items=None):
+    """The 100 curated words enrolled on a fresh installation."""
+    return [item for item in (starter_items() if items is None else items)
+            if item['kind'] == 'word' and 'core' in item.get('collections', [])]

@@ -131,6 +131,9 @@ class LibraryTests(unittest.TestCase):
                 self.assertTrue(all(p['eligible_after']==0 for p in progress))
 
     def test_custom_category_matches_existing_catalog_and_plural_terms(self):
+        # Coffee is in the starter deck; generation needs an unenrolled candidate.
+        with self.store.db() as db:
+            db.execute("DELETE FROM progress WHERE item_id='咖啡'")
         result=self.store.generate_entries({'source':'category','category':'coffee','count':1})
         self.assertEqual([i['text'] for i in result['items']],['咖啡'])
         self.assertEqual(self.store._neighbor_terms({'topic':'animals','english':'animals'}),['animal'])

@@ -68,7 +68,8 @@ class VocabularyAdmissionTests(unittest.TestCase):
         # Small explicit fixtures keep admission tests independent of corpus files.
         forms='我 你 也 要 喝 水 茶 好 一 二 三 電腦 電 腦 人 大 毛衣 毛 衣'.split()
         self.items=[dict(id=text,kind='word',text=text,pinyin=text,english=text,
-                         answers=[text],chinese_answers=[text],topic='actions',tokens=[])
+                         answers=[text],chinese_answers=[text],topic='actions',tokens=[],
+                         collections=['core'] if text in forms[:12] else [])
                     for text in forms]
         self.hanzi={c:{} for c in ''.join(forms)+'腳趾銀行電話'}
         self.store=self.open_store()
