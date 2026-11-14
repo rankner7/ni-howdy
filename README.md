@@ -16,7 +16,7 @@ Requires Python 3.11+ and a modern browser. No Node.js or database server is nee
 ./run.sh
 ```
 
-Open **http://localhost:8765**. Setup installs the Python speech dependencies, downloads the approximately 112 MiB PrimeTTS voice, and prepares Taiwan Ministry of Education recordings for supported starter characters. Prepared character recordings take priority over synthesized audio. The browser plays only the character pronunciation, stopping before the source recording's radical/stroke-count narration. All playback remains offline.
+Open **http://localhost:8765**. Setup installs the Python speech dependencies, downloads the approximately 112 MiB PrimeTTS voice, and prepares Taiwan Ministry of Education recordings for supported starter and library characters. Prepared recordings take priority over synthesized audio, including older cached synthesized clips. New supported characters automatically download their recording on first playback and cache it for offline use. The browser plays only the character pronunciation, stopping before the source recording's radical/stroke-count narration. If a matching recording cannot be prepared, the local voice supplies audio instead.
 
 The dictionary and character data are already bundled. The first launch builds a local dictionary index and prints its progress; later launches reuse the index. Wait for **Ni-howdy is ready** before opening the URL. Ctrl+C stops startup or the server cleanly; an interrupted dictionary import rolls back and can be retried by running `./run.sh` again. You do not need to activate the virtual environment manually: `run.sh` uses it automatically.
 
@@ -80,7 +80,7 @@ Without it, the app uses its local spelling lexicon and basic grammar rules. No 
 - Written form (`Hant`) and pronunciation region (`TW`) are separate data fields. Progress includes a default local learner identity, preparing the model for future accounts. Simplified/Mainland content and accounts are not yet exposed in the UI.
 - Drawing uses an embedded geometric template matcher, rather than a trained OCR model. Full-character grading tolerates translation and scale, and all drawing grades ignore stroke order/direction. Missing-stroke grading checks the new ink so an unchanged template cannot pass. Tolerance and confusing character pairs will benefit from real handwriting samples.
 - The drawing dataset covers 9,574 characters, but follows PRC stroke ordering and has some regional glyph differences. The app does not teach that ordering. New entries outside the supported drawing set remain unavailable for addition.
-- Prepared single-character audio uses reading-specific Taiwan MOE recordings, including 我 (wǒ) and 好 (hǎo). Other entries use an AI-generated Taiwan Mandarin voice. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Isolated-character synthesis can be unclear; preparation prefers the reference recordings and bypasses older synthesized clips automatically. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
+- Prepared audio uses reading-specific Taiwan MOE recordings. First playback automatically checks the bundled recording index and tries to prepare a supported single character before using synthesis. Unavailable downloads or unsafe narration boundaries fall back to the local voice; a later playback can retry after five minutes. Compound words and phrases use synthesis unless a matching prepared recording is installed. Stored readings control synthesis, including Taiwan readings identified in the dictionary. Pronunciation quality and regional edge cases have not received an independent native-speaker audit.
 - Local phrase generation currently uses constrained sentence templates. Novel free-form sentences require the optional model service. Topic and dictionary associations are useful heuristics, not a comprehensive thesaurus.
 - Backup/restore includes library, settings, sessions, and history. It replaces the local database contents after confirmation; it does not copy voice binaries or generated audio.
 
@@ -93,7 +93,9 @@ To prepare or refresh character recordings separately after updating dependencie
 .venv/bin/python scripts/setup_recordings.py
 ```
 
-Original recordings remain unchanged under `.data/audio/recordings/`, with source URLs, hashes, reading-specific identifiers, and playback boundaries in `index.json`. Setup needs internet access; practice does not. If preparation cannot safely separate the character from later narration, it leaves synthesis in use for that entry and reports the skipped recording.
+Preparation includes single-character words in your current library as well as starter characters. New supported characters are also prepared automatically on first playback. To prepare a specific character ahead of time, use `.venv/bin/python scripts/setup_recordings.py --characters 聲`.
+
+Original recordings remain unchanged under `.data/audio/recordings/`, with source URLs, hashes, reading-specific identifiers, and playback boundaries in `index.json`. Preparing a missing recording needs internet access; cached playback and synthesis work offline. If preparation cannot safely separate the character from later narration, it leaves synthesis in use for that entry.
 
 ## Checks
 

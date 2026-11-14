@@ -9,7 +9,7 @@ Optional speech: [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS), Apache-
 
 `character-audio-index.json` preserves the single-character reading/audio-ID pairs from [g0v's MOE concise dictionary audio index](https://github.com/g0v/moedict-data/blob/master/dict-concised.audio.json). Original dictionary content is credited to the Taiwan Ministry of Education. `scripts/setup_recordings.py` uses matching reading identifiers to fetch recordings from the [Ministry's character learning site](https://stroke-order.learningweb.moe.edu.tw/), saving original files unchanged in ignored local storage for personal learning. The repository does not redistribute those audio files. Their source attribution, source page, hash, and playback boundaries are saved in the local manifest. Browser audio playback stops after the initial character pronunciation rather than reading the following narration. Local preparation uses miniaudio (MIT) to detect the quiet boundary.
 
-Local data and indexes are not sent to outside services during practice. Optional content-generation requests contain only the requested entry and its source material.
+Missing supported character recordings are downloaded automatically on first playback using the bundled MOE audio identifier, then cached locally. Learning progress and library contents are not uploaded. Optional content-generation requests contain only the requested entry and its source material.
 
 ## Contextual sentences
 

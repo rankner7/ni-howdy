@@ -2,10 +2,13 @@
 import hashlib
 import json
 import re
+import subprocess
 import threading
+import time
 import wave
-import unicodedata
 from pathlib import Path
+
+from .recordings import load_index, prepare, recording_id, recording_key, save_recording
 
 
 class Audio:
@@ -16,19 +19,48 @@ class Audio:
         self.cache.mkdir(parents=True, exist_ok=True)
         self.session = None
         self.lock = threading.Lock()
+        self.recording_lock = threading.Lock()
+        self.recording_attempts = {}
 
     def recording(self, item):
         manifest = self.cache / 'recordings/index.json'
         if not manifest.exists():
             return None
         entries = json.loads(manifest.read_text())
-        key = unicodedata.normalize('NFC', item['text']+'|'+item['pinyin'].strip().lower())
+        key = recording_key(item)
         entry = entries.get(key)
         if entry:
             path = (manifest.parent / entry['file']).resolve()
             if path.is_relative_to(manifest.parent.resolve()) and path.is_file():
                 return dict(entry, path=path)
         return None
+
+    def prepare_recording(self, item):
+        """Try the reference source before using even a cached synthesized clip."""
+        reference = self.recording(item)
+        if reference:
+            return reference
+        key = recording_key(item)
+        with self.recording_lock:
+            reference = self.recording(item)
+            now = time.monotonic()
+            last_attempt = self.recording_attempts.get(key)
+            if reference or (last_attempt is not None and now-last_attempt < 300):
+                return reference
+            self.recording_attempts[key] = now
+            try:
+                index = load_index()
+                if not recording_id(item, index):
+                    return None
+                directory = self.cache / 'recordings'
+                directory.mkdir(parents=True, exist_ok=True)
+                result = prepare(item, directory, index)
+                if result:
+                    save_recording(directory, result)
+            except (ImportError, OSError, ValueError, subprocess.SubprocessError):
+                # Offline or unsupported recordings retain the local voice fallback.
+                return None
+        return self.recording(item)
 
     def playback(self, item):
         recording = self.recording(item)
@@ -51,7 +83,7 @@ class Audio:
             return False
 
     def render(self, item):
-        reference = self.recording(item)
+        reference = self.prepare_recording(item)
         if reference:
             return reference['path']
         key = hashlib.sha256(("primetts-v21-pinyin-v1:"+item["text"]+":"+item["pinyin"]).encode()).hexdigest()
