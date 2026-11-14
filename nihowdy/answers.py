@@ -139,6 +139,23 @@ def unspecified_objects(chinese):
             yield forms
 
 
+def shared_indefinite_articles(text, object_forms):
+    """An article can govern coordinated nouns: a computer and mobile phone."""
+    singulars = [singular for singular, _ in object_forms]
+    bare = {re.sub(r'^(?:a|an) ', '', singular): singular for singular in singulars}
+    if not singulars:
+        return text
+    first = '|'.join(map(re.escape, sorted(singulars, key=len, reverse=True)))
+    second = '|'.join(map(re.escape, sorted(bare, key=len, reverse=True)))
+    pattern = re.compile(r'\b(' + first + r') and (' + second + r')\b')
+    # Repeat to cover lists such as "a computer and mobile phone and keyboard".
+    while True:
+        expanded = pattern.sub(lambda m: m[1] + ' and ' + bare[m[2]], text)
+        if expanded == text:
+            return text
+        text = expanded
+
+
 def english_phrase_key(text, object_forms=()):
     text = unicodedata.normalize("NFKC", text).casefold().replace("’", "'")
     text = " ".join(text.split())
@@ -152,6 +169,7 @@ def english_phrase_key(text, object_forms=()):
         lambda m: m['prefix'] + 'to ' + PREFERENCE_ACTIONS[m['gerund']], text
     )
     text = normalize_clauses(text)
+    text = shared_indefinite_articles(text, object_forms)
     forms = {form: plural for singular, plural in object_forms for form in (singular, plural)}
     if forms:
         # Match the longest noun phrase first, in one pass: a computer mouse

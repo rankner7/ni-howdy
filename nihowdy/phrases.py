@@ -4,6 +4,7 @@ Slots are resolved to real vocabulary IDs/readings, not individual Hanzi. Conten
 verbs and objects must be mastered; longer patterns may introduce a function word.
 """
 import unicodedata
+import re
 from itertools import combinations
 
 from .vocabulary import reading_key
@@ -63,6 +64,7 @@ SUBJECTS = {'我': ('wǒ', 'I'), '你': ('nǐ', 'You'), '他': ('tā', 'He'),
             '他們': ('tā men', 'They')}
 ROLES = {'人': ('rén', 'person'), '學生': ('xué shēng', 'student'),
          '老師': ('lǎo shī', 'teacher'), '朋友': ('péng yǒu', 'friend')}
+PLURAL_IDENTITY = re.compile(r'^(我們|你們|他們)(也|不)?是(好)?(人|學生|老師|朋友)$')
 DEVICES = {text: GOODS[text] for text in ('電腦', '手機', '電話', '電視', '鍵盤', '滑鼠')}
 # Keep coordinated objects in the same semantic group. In particular, avoid
 # treating a person as a possession or using a literal 大人/小人 as big/small person.
@@ -86,6 +88,30 @@ ACTIONS = [
     ('學', 'xué', 'study', 'studying', LANGUAGES),
     ('穿', 'chuān', 'wear', 'wearing', CLOTHES),
 ]
+
+
+def role_description(noun, plural=False, good=False):
+    if plural:
+        noun = 'people' if noun == 'person' else noun + 's'
+    return ('' if plural else 'a ') + ('good ' if good else '') + noun
+
+
+def with_identity_agreement(item):
+    """Repair saved automatic identities without changing custom/corpus phrases."""
+    if item.get('kind') != 'phrase' or not (item.get('phrase_engine') or '').startswith('local-'):
+        return item
+    match = PLURAL_IDENTITY.fullmatch(phrase_key(item['text']))
+    if not match:
+        return item
+    subject, modifier, good, role = match.groups()
+    name, noun = SUBJECTS[subject][1], ROLES[role][1]
+    adverb = {'也': 'also ', '不': 'not ', None: ''}[modifier]
+    english = f'{name} are {adverb}{role_description(noun, plural=True, good=bool(good))}.'
+    malformed = f'{name} are {adverb}{role_description(noun, good=bool(good))}.'
+    def key(answer):
+        return answer.strip().rstrip('.!?').casefold()
+    answers = list(dict.fromkeys([english, *(a for a in item['answers'] if key(a) != key(malformed))]))
+    return dict(item, english=english, answers=answers)
 
 
 def candidates(items, mastered):
@@ -134,22 +160,23 @@ def candidates(items, mastered):
 
     for subject, name in subjects:
         third = name in ('He', 'She')
+        plural_subject = subject['text'] in ('我們', '你們', '他們')
         be = 'am' if name == 'I' else 'is' if third else 'are'
         is_word = resolve('是', 'shì', known=True)
         have = resolve('有', 'yǒu', known=True)
         like = functions['喜歡']
         good = resolve('好', 'hǎo', known=True)
         for role, noun in slots(ROLES, known=True):
-            yield sentence([subject, is_word, role], f'{name} {be} a {noun}.',
+            yield sentence([subject, is_word, role], f'{name} {be} {role_description(noun, plural_subject)}.',
                            'identity', 'Subject + 是 + noun identifies a person.')
         for role, noun in slots(ROLES, known=True):
-            yield sentence([subject, is_word, good, role], f'{name} {be} a good {noun}.',
+            yield sentence([subject, is_word, good, role], f'{name} {be} {role_description(noun, plural_subject, good=True)}.',
                            'identity', '是 identifies someone. 好 goes directly before a role noun: 好人 means a good person.')
             yield sentence([subject, functions['也'], is_word, role],
-                           f'{name} {be} also a {noun}.', 'identity',
+                           f'{name} {be} also {role_description(noun, plural_subject)}.', 'identity',
                            'Subject + 也 + 是 + role. 也 connects this identity to the preceding context.')
             yield sentence([subject, functions['不'], is_word, role],
-                           f'{name} {be} not a {noun}.', 'identity',
+                           f'{name} {be} not {role_description(noun, plural_subject)}.', 'identity',
                            '不 goes before 是 to negate an identity.')
             yield sentence([subject, like, good, role],
                            f"{name} {'likes' if third else 'like'} good {noun + 's' if noun != 'person' else 'people'}.",

@@ -1,7 +1,7 @@
 import unittest
 
 from nihowdy.content import starter_items
-from nihowdy.phrases import candidates, eligible
+from nihowdy.phrases import candidates, eligible, with_identity_agreement
 
 
 class PhraseEngineTests(unittest.TestCase):
@@ -94,6 +94,38 @@ class PhraseEngineTests(unittest.TestCase):
         self.assertEqual(phrases['他的電腦很大。']['english'], 'His computer is big.')
         self.assertEqual(phrases['我的蘋果很小。']['english'], 'My apple is small.')
         self.assertFalse(any('是大人' in text or '是小人' in text for text in phrases))
+
+    def test_plural_identity_patterns_agree_for_all_roles_and_modifiers(self):
+        self.master('我','你','他','她','我們','你們','他們','是','也','不','好',
+                    '學生','老師','朋友','人','有')
+        phrases={p['text']:p for p in self.generated()}
+        for subject,name in [('我們','We'),('你們','You'),('他們','They')]:
+            for role,noun in [('學生','students'),('老師','teachers'),('朋友','friends'),('人','people')]:
+                for prefix,english in [('是',f'{name} are {noun}.'),
+                                       ('是好',f'{name} are good {noun}.'),
+                                       ('也是',f'{name} are also {noun}.'),
+                                       ('不是',f'{name} are not {noun}.')]:
+                    text=subject+prefix+role+'。'
+                    with self.subTest(text=text):
+                        item=phrases[text]
+                        self.assertEqual(item['english'],english)
+                        self.assertEqual(item['answers'],[english])
+                        self.assertEqual(with_identity_agreement(item),item)
+        for subject,name,be in [('我','I','am'),('你','You','are'),('他','He','is'),('她','She','is')]:
+            self.assertEqual(phrases[subject+'是好學生。']['english'],f'{name} {be} a good student.')
+        self.assertEqual(phrases['我們有好朋友。']['english'],'We have a good friend.')
+
+    def test_saved_plural_identity_repair_is_scoped_and_removes_bad_grammar(self):
+        item=dict(kind='phrase',text='我們是好學生。',english='We are a good student.',
+                  answers=['We are a good student.','We are good students.'],phrase_engine='local-v3')
+        fixed=with_identity_agreement(item)
+        self.assertEqual(fixed['english'],'We are good students.')
+        self.assertEqual(fixed['answers'],['We are good students.'])
+        self.assertEqual(with_identity_agreement(fixed),fixed)
+        self.assertEqual(item['answers'],['We are a good student.','We are good students.'])
+        for engine in ['tatoeba-v1',None]:
+            custom=dict(item,phrase_engine=engine)
+            self.assertEqual(with_identity_agreement(custom),custom)
 
 
 

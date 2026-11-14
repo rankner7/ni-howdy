@@ -18,8 +18,11 @@ Missing supported character recordings are downloaded automatically on first pla
 Source: https://www.manythings.org/anki/cmn-eng.zip
 Tatoeba: https://tatoeba.org/ · License: CC BY 2.0 France, as indicated by each
 pair's retained attribution. See `licenses/Tatoeba.txt` for the original notice
-and archive SHA256. Sentence contributor names, IDs and English alternatives are
-retained. The application displays contributor attribution and source links.
+and archive SHA256. Sentence contributor names, IDs and all English alternatives
+present in this selected export are retained. The export does not include every
+translation on the live Tatoeba site, and practice does not fetch them live.
+Reviewed translations supplement known omissions without removing imported
+answers. The application displays contributor attribution and source links.
 
 Chinese text is adapted using OpenCC `s2twp`; original text is retained. This does
 not certify Taiwan usage. Pinyin is generated with pypinyin, and vocabulary

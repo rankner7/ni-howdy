@@ -20,6 +20,8 @@ EXPLANATION = re.compile(
     r'^(?:sound (?:made by|of)|used (?:for|to|when|as|in)|joining |'
     r'e\.g\.|for example|such as|esp\.|especially|i\.e\.|abbr\. for|'
     r'abbreviation of|Taiwan pr\.)', re.I)
+SPECIALIZATION = re.compile(r'^(?:esp\.|especially)\s+(.+)$', re.I)
+COMMA_SPECIALIZATION = re.compile(r'^([^,]+),\s*((?:esp\.|especially)\s+[^,]+)$', re.I)
 MEANINGFUL_QUALIFIER = re.compile(
     r'\b(?:not|no|never|without|only|except|opposite|negative|negated|male|female)\b|'
     r'\bin[- ]law\b', re.I)
@@ -118,6 +120,10 @@ def parse_gloss(raw, *, chinese=''):
     uncertain = False
     for part in parts:
         base, qualifiers = _edge_notes(part)
+        specialization = COMMA_SPECIALIZATION.fullmatch(base)
+        if specialization and not MEANINGFUL_QUALIFIER.search(specialization[2]):
+            base = specialization[1].strip()
+            qualifiers.append(specialization[2])
         if not base or any(char in base for char in '()[]{}"“”'):
             # For example, "(not) have", "vitamin (B)", or a description with
             # no actual translation must not become a generic/empty answer.
@@ -126,6 +132,14 @@ def parse_gloss(raw, *, chinese=''):
             continue
         translations.append(base)
         notes.extend(qualifiers)
+        for qualifier in qualifiers:
+            specific = SPECIALIZATION.fullmatch(qualifier)
+            # A modifier plus the same headword is a safe specialization.
+            # Do not turn fragments such as "esp. by train" into translations.
+            if (specific and not MEANINGFUL_QUALIFIER.search(qualifier)
+                    and re.fullmatch(r"[\w '-]+", specific[1])
+                    and specific[1].casefold().endswith(' ' + base.casefold())):
+                translations.append(specific[1])
         article = re.match(r'^(?:a|an) (.+)$', base, re.I)
         if article and not ARTICLE_EXPRESSION.match(base) and not COUNTED_WORD.match(chinese):
             translations.append(article[1])

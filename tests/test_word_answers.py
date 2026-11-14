@@ -87,6 +87,24 @@ class WordAnswerStoreTests(unittest.TestCase):
         self.assertEqual(result['progress']['attempts'], 1)
         self.assertEqual(self.store.answer('test', {'text': 'wrong'}), result)
 
+    def test_saved_media_card_accepts_both_plain_translations(self):
+        source='media, esp. news media'
+        item=dict(self.item,text='媒體',pinyin='méi tǐ',english=source,
+                  answers=[source],answer_sources=[source])
+        with self.store.db() as db:
+            db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item['id']))
+        for index,answer in enumerate(['media','news media']):
+            with self.subTest(answer=answer):
+                prompt_id=self.prompt()
+                unique_id=f'media-{index}'
+                with self.store.db() as db:
+                    db.execute('UPDATE prompts SET id=? WHERE id=?',(unique_id,prompt_id))
+                result=self.store.answer(unique_id,{'text':answer})
+                self.assertTrue(result['correct'])
+                self.assertEqual(result['progress']['level'],1)
+                self.assertEqual(result['item']['english'],source)
+                self.assertEqual(result['item']['answer_sources'],[source])
+
     def test_audio_only_card_accepts_case_and_surrounding_whitespace(self):
         result = self.store.answer(self.prompt(level=2), {'text': ' MOO '})
         self.assertTrue(result['correct'])

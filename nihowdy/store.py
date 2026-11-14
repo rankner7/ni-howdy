@@ -21,7 +21,8 @@ from .content import (AND_SOURCE, AND_USAGE, DICTIONARY_VERSION, LEGACY_AND_GLOS
 from .topics import TOPICS, COLLECTIONS, TAXONOMY_VERSION
 from .learning import (LEVELS, correct_answer, guided_stroke_correct, review_trials,
                        shape_score, transition, weight, weighted_choice, weighted_sample)
-from .phrases import ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible, phrase_key
+from .phrases import (ENGINE_VERSION, candidates as phrase_candidates, eligible as phrase_eligible,
+                      phrase_key, with_identity_agreement)
 from .vocabulary import VocabularyPolicy, reading_key
 from .taiwan import load_taiwan
 from .senses import automatic_sense, misleading_food_sense, with_usage_note
@@ -288,7 +289,8 @@ class Store:
         return self.now().astimezone(ZoneInfo(self._settings(db)["timezone"])).date().isoformat()
 
     def _items(self, db, include_deleted=False):
-        items={r['id']:sentences.with_reviewed_translation(with_word_answers(with_usage_note(json.loads(r['data'])))) for r in db.execute('SELECT * FROM items')}
+        items={r['id']:with_identity_agreement(sentences.with_reviewed_translation(
+            with_word_answers(with_usage_note(json.loads(r['data']))))) for r in db.execute('SELECT * FROM items')}
         return items if include_deleted else {key:item for key,item in items.items() if not item.get('deleted')}
 
     def _item(self, db, item_id, include_deleted=False):
@@ -298,7 +300,7 @@ class Store:
         item=json.loads(row['data'])
         if item.get('deleted') and not include_deleted:
             raise ValueError('This entry was deleted from your library. Restore it through Add example if you want to practise it again.')
-        return sentences.with_reviewed_translation(with_word_answers(with_usage_note(item)))
+        return with_identity_agreement(sentences.with_reviewed_translation(with_word_answers(with_usage_note(item))))
 
     def lowest(self, item, mode):
         return 1 if mode == "drawing" and not any(component_groups(c, self.hanzi) for c in item["text"]) else 0

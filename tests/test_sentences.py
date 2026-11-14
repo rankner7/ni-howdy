@@ -1,12 +1,59 @@
 import unittest
 from unittest.mock import patch
 from nihowdy import sentences
+from nihowdy.answers import correct_english_phrase
 
 RECORD = dict(text='我也喜歡茶。', original='我也喜欢茶。', tokens=['我','也','喜歡','茶'],
               pinyin='wǒ yě xǐ huān chá', answers=['I also like tea.', 'I like tea too.'],
               attribution=['CC-BY 2.0 (France) Attribution: tatoeba.org #1 (A) & #2 (B)'], sentence_id='2')
 
 class SentenceTests(unittest.TestCase):
+    def test_preference_audit_covers_all_matches_and_preserves_imported_answers(self):
+        from scripts.audit_preference_translations import audit
+        report=audit(sentences.corpus())
+        self.assertEqual(report['matches'],38)
+        self.assertEqual(report['counts'],{'already_in_export':7,'reviewed_like_added':29,'other_sense':2})
+        for row in report['sentences']:
+            with self.subTest(sentence=row['sentence_id']):
+                self.assertTrue(set(row['imported_answers'])<=set(row['accepted_answers']))
+                item=dict(kind='phrase',text=row['text'],english=row['imported_answers'][0],
+                          answers=row['imported_answers'])
+                updated=sentences.with_reviewed_translation(item)
+                self.assertEqual(updated['answers'],row['accepted_answers'])
+                self.assertEqual(sentences.with_reviewed_translation(updated),updated)
+
+    def test_apple_preference_accepts_like_and_to_eat(self):
+        record=next(r for r in sentences.corpus() if r['sentence_id']=='13167235')
+        answers=sentences.translations(record)
+        self.assertEqual(answers[0],'We like eating apples.')
+        for answer in ['We like eating apples','We like to eat apples','We love eating apples']:
+            self.assertTrue(correct_english_phrase(answer,answers,record['text']))
+        for wrong in ['They like eating apples','We dislike eating apples','We like eating oranges','We like apples']:
+            self.assertFalse(correct_english_phrase(wrong,answers,record['text']))
+
+    def test_review_keeps_intensifiers_tense_and_romantic_context(self):
+        by_id={r['sentence_id']:r for r in sentences.corpus()}
+        music=sentences.translations(by_id['833780'])
+        self.assertEqual(music[0],'He likes music very much.')
+        self.assertFalse(correct_english_phrase('He likes music',music,by_id['833780']['text']))
+        bananas=sentences.translations(by_id['13539445'])
+        self.assertIn('Tom liked bananas.',bananas)
+        self.assertIn('Tom loved bananas.',bananas)
+        for sentence_id in ['818094','5405489']:
+            self.assertEqual(sentences.translations(by_id[sentence_id]),by_id[sentence_id]['answers'])
+        self.assertEqual(sentences.translations(dict(text='我愛你。',answers=['I love you.'])),['I love you.'])
+
+    def test_bundled_apple_sentence_accepts_both_direct_translations(self):
+        record=next(r for r in sentences.corpus() if r['sentence_id']=='13166880')
+        answers=sentences.translations(record)
+        self.assertIn('We eat apples.',answers)
+        self.assertIn('We ate apples.',answers)
+        for answer in ['we eat apples','we ate apples']:
+            self.assertTrue(correct_english_phrase(answer,answers,record['text']))
+        for wrong in ['They eat apples','We eat oranges','We do not eat apples']:
+            self.assertFalse(correct_english_phrase(wrong,answers,record['text']))
+        self.assertFalse(correct_english_phrase('We eat apples',['We ate apples.'],'我們昨天吃了蘋果。'))
+
     def test_train_preference_uses_reviewed_translation_without_losing_source(self):
         record=dict(RECORD,text='他喜歡火車。',tokens=['他','喜歡','火車'],
                     answers=['He loves trains.'])

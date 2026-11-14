@@ -6,6 +6,30 @@ from nihowdy.learning import correct_answer
 
 
 class GlossTests(unittest.TestCase):
+    def test_specialization_notes_accept_base_and_modified_headword(self):
+        for source in ['media, esp. news media', 'media, especially news media',
+                       'media (esp. news media)']:
+            with self.subTest(source=source):
+                gloss=parse_gloss(source)
+                self.assertEqual(gloss.translations,('media','news media'))
+                self.assertTrue(gloss.notes)
+                item=with_word_answers(dict(kind='word',text='媒體',english=source,answers=[source]))
+                for answer in ['media','news media',source]:
+                    self.assertTrue(correct_answer(answer,item['answers']))
+                for wrong in ['news','press','new media','the media']:
+                    self.assertFalse(correct_answer(wrong,item['answers']))
+                self.assertEqual(item['english'],source)
+                self.assertTrue(word_sense_matches(item,source))
+                self.assertFalse(word_sense_matches(item,'news media'))
+                self.assertEqual(with_word_answers(item),item)
+
+    def test_specialization_does_not_accept_fragments_or_drop_restrictions(self):
+        self.assertEqual(parse_gloss('to travel, esp. by train').translations,('to travel',))
+        self.assertEqual(parse_gloss('ready, set, go').translations,('ready, set, go',))
+        for source in ['media, esp. news media only','media, esp. news media (not radio)']:
+            with self.subTest(source=source):
+                self.assertEqual(parse_gloss(source).translations,(source,))
+
     def test_articles_work_for_unlisted_noun_phrases(self):
         for source, bare in [('an observatory', 'observatory'), ('a lighthouse', 'lighthouse'),
                              ('an emergency exit', 'emergency exit'),

@@ -88,6 +88,32 @@ class EnglishPhraseTests(unittest.TestCase):
         self.assertEquivalent("I have a computer and a computer mouse", "I have computers and computer mice.",
                               "我有電腦，也有滑鼠。")
 
+    def test_shared_indefinite_article_in_coordinated_objects(self):
+        chinese='你有電腦，也有手機。'
+        self.assertEquivalent('You have a computer and mobile phone',
+                              'You have a computer and a mobile phone.',chinese)
+        self.assertEquivalent('You have a computer and mobile phone',
+                              'You have computers and mobile phones.',chinese)
+        self.assertEquivalent('I have a computer and computer mouse',
+                              'I have a computer and a computer mouse.','我有電腦，也有滑鼠。')
+        self.assertEquivalent('I have a computer and mobile phone and keyboard',
+                              'I have a computer and a mobile phone and a keyboard.',
+                              '我有電腦，也有手機，也有鍵盤。')
+
+    def test_shared_articles_do_not_allow_arbitrary_article_omission(self):
+        expected=['You have a computer and a mobile phone.']
+        chinese='你有電腦，也有手機。'
+        for wrong in ['You have computer and mobile phone','You have computers and mobile phone',
+                      'You have a computer and phone','You have a computer and mobile phone case',
+                      'You had a computer and mobile phone','He has a computer and mobile phone',
+                      'You do not have a computer and mobile phone']:
+            with self.subTest(answer=wrong):
+                self.assertFalse(correct_english_phrase(wrong,expected,chinese))
+        self.assertFalse(correct_english_phrase('You have mobile phone',['You have a mobile phone.'],chinese))
+        self.assertFalse(correct_english_phrase('You have a computer and mobile phone',expected))
+        self.assertFalse(correct_english_phrase('You have a computer and mobile phone',expected,
+                                               '你有一台電腦，也有一支手機。'))
+
     def test_number_rules_require_source_evidence(self):
         for chinese in ("", "我也要吃一顆蘋果。", "我也要吃兩顆蘋果。", "我也要喝蘋果汁。",
                         "我買蘋果，你買兩顆蘋果。"):
@@ -154,7 +180,10 @@ class PhraseGradingStoreTests(unittest.TestCase):
                  ("咖啡", "kā fēi", "coffee"), ("也", "yě", "also"), ("要", "yào", "want"),
                  ("吃", "chī", "eat"), ("蘋果", "píng guǒ", "apple"),
                  ("你", "nǐ", "you"), ("他", "tā", "he"), ("有", "yǒu", "have"),
-                 ("蛋", "dàn", "eggs"), ("火車", "huǒ chē", "train")]
+                 ("蛋", "dàn", "eggs"), ("火車", "huǒ chē", "train"),
+                 ("我們", "wǒ men", "we"), ("是", "shì", "be"),
+                 ("好", "hǎo", "good"), ("學生", "xué shēng", "student"),
+                 ("電腦", "diàn nǎo", "computer"), ("手機", "shǒu jī", "mobile phone")]
         items = {text: dict(id=text, text=text, pinyin=pinyin, english=english,
                            answers=[english], chinese_answers=[text], kind="word", topic="food")
                  for text, pinyin, english in words}
@@ -207,6 +236,61 @@ class PhraseGradingStoreTests(unittest.TestCase):
         self.assertIn('He loves trains.',result['item']['answers'])
         for wrong in ('She likes trains','He dislikes trains','He likes cars'):
             self.assertFalse(correct_english_phrase(wrong,result['item']['answers'],item['text']))
+
+    def test_saved_plural_identity_is_repaired_and_accepts_good_students(self):
+        item_id='phrase:我們是好學生。'
+        with self.store.db() as db:
+            item=self.store._item(db,item_id)
+            item.update(english='We are a good student.',answers=['We are a good student.'])
+            db.execute('UPDATE items SET data=? WHERE id=?',(encode(item),item_id))
+            self.assertEqual(self.store._items(db)[item_id]['english'],'We are good students.')
+        backup=self.store.backup()
+        self.store.restore(backup)
+        self.assertEqual(self.store.item(item_id)['answers'],['We are good students.'])
+        result=self.store.answer(self.prompt(item['text']),{'text':'We are good students'})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['progress']['level'],1)
+        self.assertEqual(result['item']['english'],'We are good students.')
+        self.assertFalse(correct_english_phrase('We are a good student',result['item']['answers'],item['text']))
+
+    def test_coordinated_possession_accepts_shared_article_and_advances(self):
+        result=self.store.answer(self.prompt('你有電腦，也有手機。'),
+                                 {'text':'You have a computer and mobile phone'})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['progress']['level'],1)
+
+    def test_saved_apple_sentence_accepts_present_and_past_translations(self):
+        item=dict(id='phrase:我們吃蘋果。',kind='phrase',text='我們吃蘋果。',
+                  pinyin='wǒ men chī píng guǒ',english='We ate apples.',
+                  answers=['We ate apples.'],chinese_answers=['我們吃蘋果。'],
+                  tokens=['我們','吃','蘋果'],topic='custom',phrase_engine='tatoeba-v1')
+        with self.store.db() as db:
+            db.execute('INSERT OR REPLACE INTO items VALUES (?,?)',(item['id'],encode(item)))
+            self.store._enroll(db,item['id'])
+        for index,answer in enumerate(['we eat apples','we ate apples']):
+            with self.subTest(answer=answer):
+                prompt_id=self.prompt(item['text'],level=1)
+                unique_id=f'apple-{index}'
+                with self.store.db() as db:
+                    db.execute('UPDATE prompts SET id=? WHERE id=?',(unique_id,prompt_id))
+                result=self.store.answer(unique_id,{'text':answer})
+                self.assertTrue(result['correct'])
+                self.assertEqual(result['progress']['level'],2)
+                self.assertIn('We eat apples.',result['item']['answers'])
+                self.assertIn('We ate apples.',result['item']['answers'])
+
+    def test_saved_corpus_apple_preference_accepts_patterned_gerund_equivalence(self):
+        item=dict(id='phrase:我們喜歡吃蘋果。',kind='phrase',text='我們喜歡吃蘋果。',
+                  pinyin='wǒ men xǐ huān chī píng guǒ',english='We love eating apples.',
+                  answers=['We love eating apples.'],chinese_answers=['我們喜歡吃蘋果。'],
+                  tokens=['我們','喜歡','吃','蘋果'],topic='custom',phrase_engine='tatoeba-v1')
+        with self.store.db() as db:
+            db.execute('INSERT OR REPLACE INTO items VALUES (?,?)',(item['id'],encode(item)))
+            self.store._enroll(db,item['id'])
+        result=self.store.answer(self.prompt(item['text']),{'text':'We like to eat apples'})
+        self.assertTrue(result['correct'])
+        self.assertEqual(result['item']['english'],'We like eating apples.')
+        self.assertIn('We love eating apples.',result['item']['answers'])
 
     def test_apple_advances_at_medium(self):
         result = self.store.answer(self.prompt("我也要吃蘋果。", level=1), {"text": "I also want to eat an apple"})

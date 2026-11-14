@@ -132,7 +132,9 @@ link. Where there are no corpus matches, local grammar examples remain available
 The phrase page mixes corpus sentences into the local grammar queue when all
 vocabulary can be mapped unambiguously to catalog entries, the sentence contains
 at least two words, and strictly more than 80% are mastered. Linked English
-translations are accepted alternatives. Hard phrase audio remains unavailable.
+translations included in the bundled export and reviewed corrections are accepted
+alternatives; additional translations on the live site may be absent from this
+offline snapshot. Hard phrase audio remains unavailable.
 
 Chinese has been adapted to Traditional characters and Taiwan vocabulary with
 OpenCC; this does not guarantee Taiwan usage. Pinyin and word boundaries are
