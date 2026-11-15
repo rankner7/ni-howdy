@@ -6,8 +6,7 @@ A personal, locally runnable Taiwan Mandarin learning app. Practise Traditional 
  - account management
 
 ## Fixes
-  - 媒體 méi tǐ --> "media, esp. news media"
- 
+
 ## Run locally
 
 Requires Python 3.11+ and a modern browser. No Node.js or database server is needed.
