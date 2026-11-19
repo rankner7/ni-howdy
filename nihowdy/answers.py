@@ -64,6 +64,9 @@ CONTRACTIONS = {
     "hadn't": "had not", "mustn't": "must not",
 }
 CONTRACTION = re.compile(r"\b(?:" + "|".join(map(re.escape, CONTRACTIONS)) + r")\b")
+# Before an article, pronoun + 's introduces a noun phrase ("he is a teacher").
+# Leave participles alone since "he's finished" can also mean "he has finished".
+COPULA_BEFORE_ARTICLE = re.compile(r"\b(he|she|it)'s (?=(?:a|an|the) )")
 
 # Explicit forms avoid unreliable stemming (e.g. studying -> study).
 PREFERENCE_ACTIONS = {
@@ -163,6 +166,7 @@ def english_phrase_key(text, object_forms=()):
     # supported joining commas below. Other punctuation and possessives remain.
     text = text.rstrip(".!? ")
     text = CONTRACTION.sub(lambda m: CONTRACTIONS[m[0]], text)
+    text = COPULA_BEFORE_ARTICLE.sub(r"\1 is ", text)
     # Restrict this to ordinary preference clauses. In particular, "would like
     # to drink" expresses a wish and must not collapse to "would like drinking".
     text = PREFERENCE.sub(

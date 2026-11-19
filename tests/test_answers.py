@@ -33,6 +33,15 @@ class EnglishPhraseTests(unittest.TestCase):
                               ("We can't eat apples", "We cannot eat apples.")):
             self.assertEquivalent(first, second)
 
+    def test_contracted_is_before_an_article(self):
+        accepted = ["He's a good lad.", "He's a good fellow.", "He's a good person."]
+        self.assertTrue(correct_english_phrase("he is a good person", accepted, "他是個好人。"))
+        self.assertEquivalent("She’s an artist.", "She is an artist.")
+        self.assertEquivalent("It's the answer.", "It is the answer.")
+        for wrong in ("He has a good person", "He was a good person", "She is a good person"):
+            self.assertFalse(correct_english_phrase(wrong, accepted))
+        self.assertFalse(correct_english_phrase("He is eaten", ["He's eaten."]))
+
     def test_reported_shared_possession_and_optional_conjunction(self):
         expected = "You have eggs, and he has eggs too."
         for answer in ("You have eggs, he also has eggs", "You have eggs and he also has eggs",
